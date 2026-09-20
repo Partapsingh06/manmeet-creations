@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import { Heart, ShoppingBag, Eye, Star, Sparkles } from 'lucide-react';
 import { useCart } from '../context/CartContext';
 import { useWishlist } from '../context/WishlistContext';
+import { getImageUrl } from '../utils/api';
 
 export const ProductCard = ({ product, onQuickView }) => {
   const { addToCart } = useCart();
@@ -11,10 +12,11 @@ export const ProductCard = ({ product, onQuickView }) => {
   if (!product) return null;
 
   const isLiked = isInWishlist(product._id || product.id);
-  const imageUrl =
+  const rawImage =
     (Array.isArray(product.images) && product.images.length > 0)
       ? product.images[0]
-      : (product.featuredImage || product.image || 'https://images.unsplash.com/photo-1598300042247-d088f8ab3a91?auto=format&fit=crop&w=800&q=80');
+      : (product.featuredImage || product.image);
+  const imageUrl = getImageUrl(rawImage);
 
   const discount = product.discountPercent || (
     product.originalPrice && product.originalPrice > product.price

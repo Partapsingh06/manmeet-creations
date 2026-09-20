@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { useToast } from './ToastContext';
+import { getImageUrl } from '../utils/api';
 
 const CartContext = createContext();
 
@@ -44,7 +45,7 @@ export const CartProvider = ({ children }) => {
             name: product.name,
             price: Number(product.price),
             originalPrice: Number(product.originalPrice || product.price),
-            image: Array.isArray(product.images) && product.images.length > 0 ? product.images[0] : (product.featuredImage || product.image),
+            image: getImageUrl(Array.isArray(product.images) && product.images.length > 0 ? product.images[0] : (product.featuredImage || product.image)),
             category: product.category,
             quantity: Number(quantity),
             customNote: customNote || '',

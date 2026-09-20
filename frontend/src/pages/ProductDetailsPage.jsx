@@ -21,7 +21,7 @@ import { useCart } from '../context/CartContext';
 import { useWishlist } from '../context/WishlistContext';
 import { useAuth } from '../context/AuthContext';
 import { useToast } from '../context/ToastContext';
-import { apiRequest } from '../utils/api';
+import { apiRequest, getImageUrl } from '../utils/api';
 
 export const ProductDetailsPage = () => {
   const { idOrSlug } = useParams();
@@ -91,9 +91,11 @@ export const ProductDetailsPage = () => {
     );
   }
 
-  const images = Array.isArray(product.images) && product.images.length > 0
+  const rawImages = Array.isArray(product.images) && product.images.length > 0
     ? product.images
-    : [product.featuredImage || product.image || 'https://images.unsplash.com/photo-1598300042247-d088f8ab3a91?auto=format&fit=crop&w=800&q=80'];
+    : [product.featuredImage || product.image];
+
+  const images = rawImages.map(img => getImageUrl(img));
 
   const isLiked = isInWishlist(product._id);
 

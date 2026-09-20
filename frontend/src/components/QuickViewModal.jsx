@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import { X, Star, ShoppingBag, Heart, Check, Truck, Clock, Sparkles } from 'lucide-react';
 import { useCart } from '../context/CartContext';
 import { useWishlist } from '../context/WishlistContext';
+import { getImageUrl } from '../utils/api';
 
 export const QuickViewModal = ({ product, onClose }) => {
   const [selectedImage, setSelectedImage] = useState(0);
@@ -14,9 +15,11 @@ export const QuickViewModal = ({ product, onClose }) => {
 
   if (!product) return null;
 
-  const images = Array.isArray(product.images) && product.images.length > 0
+  const rawImages = Array.isArray(product.images) && product.images.length > 0
     ? product.images
-    : [product.featuredImage || product.image || 'https://images.unsplash.com/photo-1598300042247-d088f8ab3a91?auto=format&fit=crop&w=800&q=80'];
+    : [product.featuredImage || product.image];
+
+  const images = rawImages.map(img => getImageUrl(img));
 
   const isLiked = isInWishlist(product._id || product.id);
 

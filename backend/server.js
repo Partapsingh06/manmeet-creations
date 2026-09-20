@@ -1,5 +1,3 @@
-import dns from "node:dns/promises";
-dns.setServers(["1.1.1.1"]);
 import express from 'express';
 import dotenv from 'dotenv';
 import cors from 'cors';
@@ -10,6 +8,16 @@ import { connectDB } from './config/db.js';
 import { seedData } from './seeder.js';
 import Product from './models/Product.js';
 import User from './models/User.js';
+
+// Safe DNS servers configuration for local development / Node.js
+try {
+  const dns = await import("node:dns/promises");
+  if (dns && typeof dns.setServers === 'function') {
+    dns.setServers(["1.1.1.1", "8.8.8.8"]);
+  }
+} catch {
+  // DNS override fallback
+}
 
 // Route imports
 import authRoutes from './routes/authRoutes.js';
@@ -28,10 +36,34 @@ dotenv.config();
 const app = express();
 const PORT = process.env.PORT || 5000;
 
-// Enable CORS for frontend Vite dev server (usually 5173 / localhost)
+// Enable CORS for frontend Netlify deployments & local dev
 app.use(
   cors({
-    origin: '*',
+    origin: (origin, callback) => {
+      // Allow requests with no origin (e.g. mobile apps, curl, server-to-server)
+      if (!origin) return callback(null, true);
+
+      const frontendUrl = (process.env.FRONTEND_URL || '').replace(/\/+$/, '');
+      const allowedOrigins = [
+        frontendUrl,
+        'http://localhost:5173',
+        'http://localhost:3000',
+        'http://127.0.0.1:5173',
+        'http://127.0.0.1:3000',
+      ].filter(Boolean);
+
+      if (
+        allowedOrigins.length === 0 ||
+        allowedOrigins.includes(origin) ||
+        origin.endsWith('.netlify.app') ||
+        origin.includes('localhost') ||
+        origin.includes('127.0.0.1')
+      ) {
+        return callback(null, true);
+      }
+      // Permissive fallback matching requester origin with credentials support
+      return callback(null, true);
+    },
     credentials: true,
   })
 );

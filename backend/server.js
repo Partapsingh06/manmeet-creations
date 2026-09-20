@@ -37,6 +37,15 @@ const app = express();
 const PORT = process.env.PORT || 5000;
 
 // Enable CORS for frontend Netlify deployments & local dev
+const allowedOrigins = [
+  'https://manmeetcreations.netlify.app',
+  'https://manmeet-creations.netlify.app',
+  'http://localhost:5173',
+  'http://localhost:3000',
+  'http://127.0.0.1:5173',
+  'http://127.0.0.1:3000',
+];
+
 app.use(
   cors({
     origin: (origin, callback) => {
@@ -44,17 +53,10 @@ app.use(
       if (!origin) return callback(null, true);
 
       const frontendUrl = (process.env.FRONTEND_URL || '').replace(/\/+$/, '');
-      const allowedOrigins = [
-        frontendUrl,
-        'http://localhost:5173',
-        'http://localhost:3000',
-        'http://127.0.0.1:5173',
-        'http://127.0.0.1:3000',
-      ].filter(Boolean);
+      const validOrigins = [frontendUrl, ...allowedOrigins].filter(Boolean);
 
       if (
-        allowedOrigins.length === 0 ||
-        allowedOrigins.includes(origin) ||
+        validOrigins.includes(origin) ||
         origin.endsWith('.netlify.app') ||
         origin.includes('localhost') ||
         origin.includes('127.0.0.1')
@@ -65,6 +67,8 @@ app.use(
       return callback(null, true);
     },
     credentials: true,
+    methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
+    allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With'],
   })
 );
 

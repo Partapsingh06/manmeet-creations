@@ -978,7 +978,7 @@ export const seedData = async () => {
 };
 
 // If run directly via `node seeder.js`
-if (process.argv[1].endsWith('seeder.js')) {
+if (process.argv[1] && process.argv[1].endsWith('seeder.js')) {
   connectDB().then(async () => {
     await seedData();
     process.exit(0);

@@ -1,23 +1,36 @@
-const API_URL = (import.meta.env.VITE_API_URL || '').replace(/\/+$/, '');
+// Manmeet Creations - Central API Client Configuration
+const DEFAULT_PROD_API_URL = 'https://manmeet-creations.onrender.com';
+
+export const getBaseApiUrl = () => {
+  const envUrl = import.meta.env.VITE_API_URL;
+  if (envUrl && typeof envUrl === 'string' && envUrl.trim() !== '') {
+    return envUrl.trim().replace(/\/+$/, '');
+  }
+  if (import.meta.env.PROD) {
+    return DEFAULT_PROD_API_URL;
+  }
+  return '';
+};
 
 export const buildUrl = (endpoint) => {
+  const baseUrl = getBaseApiUrl();
   const cleanEndpoint = endpoint.startsWith('/') ? endpoint : `/${endpoint}`;
 
-  if (!API_URL) {
+  if (!baseUrl) {
     return cleanEndpoint.startsWith('/api/') || cleanEndpoint === '/api'
       ? cleanEndpoint
       : `/api${cleanEndpoint}`;
   }
 
-  if (API_URL.endsWith('/api')) {
+  if (baseUrl.endsWith('/api')) {
     const withoutApi = cleanEndpoint.replace(/^\/api(\/|$)/, '/');
-    return `${API_URL}${withoutApi.startsWith('/') ? withoutApi : `/${withoutApi}`}`;
+    return `${baseUrl}${withoutApi.startsWith('/') ? withoutApi : `/${withoutApi}`}`;
   }
 
   const withApi = cleanEndpoint.startsWith('/api/') || cleanEndpoint === '/api'
     ? cleanEndpoint
     : `/api${cleanEndpoint}`;
-  return `${API_URL}${withApi}`;
+  return `${baseUrl}${withApi}`;
 };
 
 export const getImageUrl = (imageSrc, fallback = 'https://images.unsplash.com/photo-1598300042247-d088f8ab3a91?auto=format&fit=crop&w=800&q=80') => {
@@ -26,9 +39,10 @@ export const getImageUrl = (imageSrc, fallback = 'https://images.unsplash.com/ph
   if (imageSrc.startsWith('http://') || imageSrc.startsWith('https://') || imageSrc.startsWith('data:') || imageSrc.startsWith('blob:')) {
     return imageSrc;
   }
-  if (imageSrc.startsWith('/uploads')) {
-    const baseUrl = API_URL ? API_URL.replace(/\/api\/?$/, '') : '';
-    return baseUrl ? `${baseUrl}${imageSrc}` : imageSrc;
+  if (imageSrc.startsWith('/uploads') || imageSrc.startsWith('uploads/')) {
+    const cleanUploadPath = imageSrc.startsWith('/') ? imageSrc : `/${imageSrc}`;
+    const baseUrl = getBaseApiUrl().replace(/\/api\/?$/, '');
+    return baseUrl ? `${baseUrl}${cleanUploadPath}` : cleanUploadPath;
   }
   return imageSrc;
 };

@@ -117,25 +117,15 @@ const startServer = async () => {
   try {
     await connectDB();
 
-    // Check if admin user exists, or run seed
-    const targetAdminEmail = (process.env.ADMIN_EMAIL || 'kmeet7270@gmail.com').toLowerCase().trim();
-    let adminExists = await User.findOne({ email: targetAdminEmail });
-    if (!adminExists) {
-      const anyAdmin = await User.findOne({ role: 'admin' });
-      if (anyAdmin) {
-        anyAdmin.email = targetAdminEmail;
-        anyAdmin.phone = '+91 6239661708';
-        await anyAdmin.save();
-        adminExists = anyAdmin;
-      }
-    }
+    // Check if admin user exists, or run initial seed
+    const adminExists = await User.findOne({ role: 'admin' });
     const productCount = await Product.countDocuments();
 
     if (!adminExists || productCount === 0) {
-      console.log('🌱 Initializing/refreshing boutique seed data & admin account...');
+      console.log('🌱 Initializing boutique seed data & default records...');
       await seedData();
     } else {
-      console.log(`✨ Database active with ${productCount} handcrafted products and registered admin (${targetAdminEmail}).`);
+      console.log(`✨ Database active with ${productCount} handcrafted products and configured admin account.`);
     }
 
     app.listen(PORT, () => {

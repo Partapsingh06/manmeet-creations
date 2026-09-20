@@ -24,14 +24,15 @@ import {
   ExternalLink,
   ChevronRight,
   Layers,
-  Inbox
+  Inbox,
+  LogOut
 } from 'lucide-react';
 import { apiRequest } from '../../utils/api';
 import { useToast } from '../../context/ToastContext';
 import { useAuth } from '../../context/AuthContext';
 
 export const AdminDashboard = () => {
-  const { user } = useAuth();
+  const { user, logout } = useAuth();
   const { addToast } = useToast();
 
   const [activeTab, setActiveTab] = useState('dashboard');
@@ -297,7 +298,7 @@ export const AdminDashboard = () => {
           </span>
         </div>
 
-        <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.8rem' }}>
           <span style={{ fontSize: '0.88rem', color: '#B3AAA4' }}>
             Logged in as <strong>{user?.name}</strong>
           </span>
@@ -310,6 +311,14 @@ export const AdminDashboard = () => {
           >
             <ExternalLink size={14} /> View Live Store
           </a>
+          <button
+            onClick={logout}
+            className="btn btn-sm btn-secondary"
+            style={{ padding: '0.35rem 0.8rem', fontSize: '0.8rem', color: '#dc3545', display: 'flex', alignItems: 'center', gap: '0.3rem', cursor: 'pointer' }}
+            title="Logout of Admin Panel"
+          >
+            <LogOut size={14} /> Logout
+          </button>
         </div>
       </div>
 

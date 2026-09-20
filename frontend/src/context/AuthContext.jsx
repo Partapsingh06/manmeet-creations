@@ -116,7 +116,7 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
-  const isAdmin = user && user.role === 'admin';
+  const isAdmin = Boolean(user && user.role === 'admin');
 
   return (
     <AuthContext.Provider

@@ -24,15 +24,12 @@ export const registerUser = async (req, res) => {
       return res.status(400).json({ success: false, message: 'An account with this email already exists' });
     }
 
-    const adminEmail = (process.env.ADMIN_EMAIL || 'kmeet7270@gmail.com').toLowerCase().trim();
-    const assignedRole = normalizedEmail === adminEmail ? 'admin' : 'user';
-
     const user = await User.create({
       name: name.trim(),
       email: normalizedEmail,
       password,
       phone: phone ? phone.trim() : '',
-      role: assignedRole, // Automatically assign 'user' for all users; 'admin' strictly for designated admin
+      role: 'user', // Default customer role for all new signups
     });
 
     if (user) {
@@ -73,13 +70,6 @@ export const loginUser = async (req, res) => {
     const user = await User.findOne({ email: normalizedEmail }).select('+password').populate('wishlist');
 
     if (user && (await user.matchPassword(password))) {
-      // Ensure designated admin email always retains admin role
-      const adminEmail = (process.env.ADMIN_EMAIL || 'kmeet7270@gmail.com').toLowerCase().trim();
-      if (normalizedEmail === adminEmail && user.role !== 'admin') {
-        user.role = 'admin';
-        await user.save();
-      }
-
       res.json({
         success: true,
         user: {

@@ -26,21 +26,17 @@ export const LoginPage = () => {
     setSubmitting(true);
     try {
       const loggedUser = await login(email, password);
-      if (loggedUser.role === 'admin') {
+      if (loggedUser && loggedUser.role === 'admin') {
         navigate('/admin');
       } else {
-        navigate(from, { replace: true });
+        const destination = from === '/admin' ? '/' : from;
+        navigate(destination, { replace: true });
       }
     } catch {
       // Toast handled in context
     } finally {
       setSubmitting(false);
     }
-  };
-
-  const fillCredentials = (userEmail, userPass) => {
-    setEmail(userEmail);
-    setPassword(userPass);
   };
 
   return (
@@ -64,31 +60,6 @@ export const LoginPage = () => {
           <p style={{ color: 'var(--text-muted)', fontSize: '0.9rem' }}>
             Sign in to access your customized orders and saved wishlist
           </p>
-        </div>
-
-        {/* 1-Click Quick Demo Login Helper */}
-        <div style={{ backgroundColor: 'var(--bg-cream)', borderRadius: 'var(--radius-md)', padding: '1rem', marginBottom: '1.8rem', border: '1px dashed var(--border-subtle)' }}>
-          <div style={{ fontSize: '0.78rem', textTransform: 'uppercase', color: 'var(--lavender-primary)', fontWeight: 700, marginBottom: '0.5rem', letterSpacing: '0.05em' }}>
-            ⚡ Demo 1-Click Fast Credentials:
-          </div>
-          <div style={{ display: 'flex', gap: '0.6rem' }}>
-            <button
-              type="button"
-              onClick={() => fillCredentials('kmeet7270@gmail.com', 'Admin@1234')}
-              className="btn btn-sm btn-secondary"
-              style={{ fontSize: '0.78rem', padding: '0.35rem 0.7rem', flex: 1 }}
-            >
-              👑 Admin Demo
-            </button>
-            <button
-              type="button"
-              onClick={() => fillCredentials('customer@gmail.com', 'Customer@1234')}
-              className="btn btn-sm btn-secondary"
-              style={{ fontSize: '0.78rem', padding: '0.35rem 0.7rem', flex: 1 }}
-            >
-              🛍️ Customer Demo
-            </button>
-          </div>
         </div>
 
         <form onSubmit={handleSubmit}>

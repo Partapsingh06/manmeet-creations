@@ -1,5 +1,6 @@
 import Product from '../models/Product.js';
 import Review from '../models/Review.js';
+import { deleteFromCloudinary } from '../config/cloudinary.js';
 
 // Helper to make clean URL slug
 const slugify = (text) => {
@@ -138,6 +139,7 @@ export const createProduct = async (req, res) => {
       price,
       originalPrice,
       images,
+      featuredImage,
       materials,
       dimensions,
       leadTimeDays,
@@ -150,8 +152,22 @@ export const createProduct = async (req, res) => {
       tags,
     } = req.body;
 
-    if (!name || !price || !category || !images || images.length === 0) {
-      return res.status(400).json({ success: false, message: 'Please provide name, price, category, and at least one image' });
+    let processedImages = [];
+    if (Array.isArray(images)) {
+      processedImages = images.filter(Boolean);
+    } else if (typeof images === 'string' && images.trim() !== '') {
+      processedImages = images.split(',').map((img) => img.trim()).filter(Boolean);
+    }
+
+    if (featuredImage && !processedImages.includes(featuredImage)) {
+      processedImages.unshift(featuredImage);
+    }
+
+    if (!name || !price || !category || processedImages.length === 0) {
+      return res.status(400).json({
+        success: false,
+        message: 'Please provide product name, selling price, category, and at least one image.',
+      });
     }
 
     const baseSlug = slugify(name);
@@ -162,34 +178,47 @@ export const createProduct = async (req, res) => {
       counter++;
     }
 
-    const discountPercent = originalPrice && originalPrice > price
-      ? Math.round(((originalPrice - price) / originalPrice) * 100)
-      : 0;
+    const discountPercent =
+      originalPrice && Number(originalPrice) > Number(price)
+        ? Math.round(((Number(originalPrice) - Number(price)) / Number(originalPrice)) * 100)
+        : 0;
 
     const product = new Product({
-      name,
+      name: name.trim(),
       slug: uniqueSlug,
       description: description || 'Handcrafted bespoke artisan piece.',
-      category,
+      category: category.trim(),
       price: Number(price),
       originalPrice: originalPrice ? Number(originalPrice) : Number(price),
       discountPercent,
-      images: Array.isArray(images) ? images : [images],
-      featuredImage: Array.isArray(images) && images.length > 0 ? images[0] : images,
-      materials: Array.isArray(materials) ? materials : (materials ? materials.split(',').map(m => m.trim()) : []),
+      images: processedImages,
+      featuredImage: featuredImage || processedImages[0] || '',
+      materials: Array.isArray(materials)
+        ? materials
+        : materials
+        ? materials.split(',').map((m) => m.trim()).filter(Boolean)
+        : [],
       dimensions: dimensions || 'Customizable',
       leadTimeDays: leadTimeDays ? Number(leadTimeDays) : 3,
       isCustomizable: isCustomizable !== undefined ? Boolean(isCustomizable) : true,
       customizationNote: customizationNote || 'Customized to your personal aesthetic request.',
       inStock: inStock !== undefined ? Boolean(inStock) : true,
-      countInStock: countInStock ? Number(countInStock) : 10,
+      countInStock: countInStock !== undefined ? Number(countInStock) : 10,
       isFeatured: isFeatured !== undefined ? Boolean(isFeatured) : false,
       isBestSeller: isBestSeller !== undefined ? Boolean(isBestSeller) : false,
-      tags: Array.isArray(tags) ? tags : (tags ? tags.split(',').map(t => t.trim()) : []),
+      tags: Array.isArray(tags)
+        ? tags
+        : tags
+        ? tags.split(',').map((t) => t.trim()).filter(Boolean)
+        : [],
     });
 
     const createdProduct = await product.save();
-    res.status(201).json({ success: true, product: createdProduct, message: 'Product created successfully! ✨' });
+    res.status(201).json({
+      success: true,
+      product: createdProduct,
+      message: 'Product created successfully! ✨',
+    });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });
   }
@@ -207,25 +236,43 @@ export const updateProduct = async (req, res) => {
     }
 
     const fields = req.body;
-    
+
     if (fields.name && fields.name !== product.name) {
-      product.name = fields.name;
+      product.name = fields.name.trim();
       product.slug = slugify(fields.name);
     }
-    
+
     if (fields.price !== undefined) product.price = Number(fields.price);
     if (fields.originalPrice !== undefined) product.originalPrice = Number(fields.originalPrice);
-    if (fields.originalPrice && fields.price) {
-      product.discountPercent = Math.round(((fields.originalPrice - fields.price) / fields.originalPrice) * 100);
+
+    if (product.originalPrice && product.price && product.originalPrice > product.price) {
+      product.discountPercent = Math.round(
+        ((product.originalPrice - product.price) / product.originalPrice) * 100
+      );
+    } else {
+      product.discountPercent = 0;
     }
+
     if (fields.description !== undefined) product.description = fields.description;
-    if (fields.category !== undefined) product.category = fields.category;
+    if (fields.category !== undefined) product.category = fields.category.trim();
+
     if (fields.images !== undefined) {
-      product.images = Array.isArray(fields.images) ? fields.images : [fields.images];
-      product.featuredImage = product.images[0];
+      let nextImages = [];
+      if (Array.isArray(fields.images)) {
+        nextImages = fields.images.filter(Boolean);
+      } else if (typeof fields.images === 'string' && fields.images.trim() !== '') {
+        nextImages = fields.images.split(',').map((img) => img.trim()).filter(Boolean);
+      }
+      product.images = nextImages;
+      product.featuredImage = fields.featuredImage || nextImages[0] || '';
+    } else if (fields.featuredImage !== undefined) {
+      product.featuredImage = fields.featuredImage;
     }
+
     if (fields.materials !== undefined) {
-      product.materials = Array.isArray(fields.materials) ? fields.materials : fields.materials.split(',').map(m => m.trim());
+      product.materials = Array.isArray(fields.materials)
+        ? fields.materials
+        : fields.materials.split(',').map((m) => m.trim()).filter(Boolean);
     }
     if (fields.dimensions !== undefined) product.dimensions = fields.dimensions;
     if (fields.leadTimeDays !== undefined) product.leadTimeDays = Number(fields.leadTimeDays);
@@ -236,11 +283,17 @@ export const updateProduct = async (req, res) => {
     if (fields.isFeatured !== undefined) product.isFeatured = Boolean(fields.isFeatured);
     if (fields.isBestSeller !== undefined) product.isBestSeller = Boolean(fields.isBestSeller);
     if (fields.tags !== undefined) {
-      product.tags = Array.isArray(fields.tags) ? fields.tags : fields.tags.split(',').map(t => t.trim());
+      product.tags = Array.isArray(fields.tags)
+        ? fields.tags
+        : fields.tags.split(',').map((t) => t.trim()).filter(Boolean);
     }
 
     const updatedProduct = await product.save();
-    res.json({ success: true, product: updatedProduct, message: 'Product updated successfully! ✨' });
+    res.json({
+      success: true,
+      product: updatedProduct,
+      message: 'Product updated successfully! ✨',
+    });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });
   }
@@ -257,10 +310,19 @@ export const deleteProduct = async (req, res) => {
       return res.status(404).json({ success: false, message: 'Product not found' });
     }
 
+    // Clean up images in Cloudinary if configured
+    if (product.images && product.images.length > 0) {
+      for (const imgUrl of product.images) {
+        if (imgUrl.includes('cloudinary.com')) {
+          await deleteFromCloudinary(imgUrl).catch(() => {});
+        }
+      }
+    }
+
     await Product.deleteOne({ _id: req.params.id });
     await Review.deleteMany({ product: req.params.id });
 
-    res.json({ success: true, message: 'Product removed from collection' });
+    res.json({ success: true, message: `Product "${product.name}" removed from collection` });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });
   }
@@ -278,7 +340,7 @@ export const createProductReview = async (req, res) => {
       return res.status(404).json({ success: false, message: 'Product not found' });
     }
 
-    const reviewName = req.user ? req.user.name : (name || 'Anonymous Art Enthusiast');
+    const reviewName = req.user ? req.user.name : name || 'Anonymous Art Enthusiast';
     const reviewCity = city || 'India';
 
     const review = new Review({
@@ -296,9 +358,9 @@ export const createProductReview = async (req, res) => {
     // Recalculate rating
     const allReviews = await Review.find({ product: product._id });
     product.numReviews = allReviews.length;
-    product.rating = (
-      allReviews.reduce((acc, item) => item.rating + acc, 0) / allReviews.length
-    ).toFixed(1);
+    product.rating = Number(
+      (allReviews.reduce((acc, item) => item.rating + acc, 0) / allReviews.length).toFixed(1)
+    );
 
     await product.save();
 

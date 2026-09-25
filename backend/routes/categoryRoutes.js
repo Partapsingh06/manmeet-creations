@@ -1,6 +1,7 @@
 import express from 'express';
 import {
   getCategories,
+  getCategoryById,
   createCategory,
   updateCategory,
   deleteCategory,
@@ -14,6 +15,7 @@ router.route('/')
   .post(protect, admin, createCategory);
 
 router.route('/:id')
+  .get(getCategoryById)
   .put(protect, admin, updateCategory)
   .delete(protect, admin, deleteCategory);
 

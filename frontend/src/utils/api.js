@@ -1,5 +1,6 @@
 // Manmeet Creations - Central API Client Configuration
 const DEFAULT_PROD_API_URL = 'https://manmeet-creations.onrender.com';
+export const DEFAULT_PLACEHOLDER_IMAGE = 'https://images.unsplash.com/photo-1598300042247-d088f8ab3a91?auto=format&fit=crop&w=800&q=80';
 
 export const getBaseApiUrl = () => {
   const envUrl = import.meta.env.VITE_API_URL;
@@ -12,47 +13,89 @@ export const getBaseApiUrl = () => {
   return '';
 };
 
+/**
+ * Builds a clean, non-duplicate API endpoint URL.
+ * Guarantees that `/api/api/` is NEVER produced.
+ */
 export const buildUrl = (endpoint) => {
-  const baseUrl = getBaseApiUrl();
-  const cleanEndpoint = endpoint.startsWith('/') ? endpoint : `/${endpoint}`;
+  let base = getBaseApiUrl();
+  // Strip trailing /api and trailing slashes so base is root domain
+  base = base.replace(/\/+$/, '').replace(/\/api$/, '');
 
-  if (!baseUrl) {
-    return cleanEndpoint.startsWith('/api/') || cleanEndpoint === '/api'
-      ? cleanEndpoint
-      : `/api${cleanEndpoint}`;
+  let path = (endpoint || '').trim();
+  if (!path.startsWith('/')) {
+    path = `/${path}`;
   }
 
-  if (baseUrl.endsWith('/api')) {
-    const withoutApi = cleanEndpoint.replace(/^\/api(\/|$)/, '/');
-    return `${baseUrl}${withoutApi.startsWith('/') ? withoutApi : `/${withoutApi}`}`;
+  // Ensure path starts with /api (without duplicating)
+  if (!path.startsWith('/api/') && path !== '/api') {
+    path = `/api${path}`;
   }
+  // Remove any duplicate /api/api occurrences
+  path = path.replace(/^\/api(\/api)+/, '/api');
 
-  const withApi = cleanEndpoint.startsWith('/api/') || cleanEndpoint === '/api'
-    ? cleanEndpoint
-    : `/api${cleanEndpoint}`;
-  return `${baseUrl}${withApi}`;
+  return base ? `${base}${path}` : path;
 };
 
-export const getImageUrl = (
-  imageSrc,
-  fallback = 'https://images.unsplash.com/photo-1598300042247-d088f8ab3a91?auto=format&fit=crop&w=800&q=80'
-) => {
-  if (!imageSrc) return fallback;
-  if (typeof imageSrc !== 'string') return fallback;
-  if (
-    imageSrc.startsWith('http://') ||
-    imageSrc.startsWith('https://') ||
-    imageSrc.startsWith('data:') ||
-    imageSrc.startsWith('blob:')
-  ) {
-    return imageSrc;
+/**
+ * Robust image URL sanitizer
+ * Catches concatenated URLs (e.g. instagram + unsplash), malformed schemas, and HTML links
+ */
+export const getImageUrl = (imageSrc, fallback = DEFAULT_PLACEHOLDER_IMAGE) => {
+  if (!imageSrc || typeof imageSrc !== 'string') return fallback;
+  let clean = imageSrc.trim();
+
+  if (!clean || clean === 'null' || clean === 'undefined' || clean === '[object Object]') {
+    return fallback;
   }
-  if (imageSrc.startsWith('/uploads') || imageSrc.startsWith('uploads/')) {
-    const cleanUploadPath = imageSrc.startsWith('/') ? imageSrc : `/${imageSrc}`;
-    const baseUrl = getBaseApiUrl().replace(/\/api\/?$/, '');
-    return baseUrl ? `${baseUrl}${cleanUploadPath}` : cleanUploadPath;
+
+  // Detect and extract embedded valid Cloudinary or Unsplash URLs if concatenated
+  if (clean.includes('cloudinary.com') || clean.includes('unsplash.com')) {
+    const cloudMatch = clean.match(/https?:\/\/[^\s"'<>]*(?:res\.cloudinary\.com|cloudinary\.com)[^\s"'<>]+/i);
+    if (cloudMatch) return cloudMatch[0];
+
+    const unsplashMatch = clean.match(/(?:https?:\/\/)?(?:i?mages\.unsplash\.com)[^\s"'<>]+/i);
+    if (unsplashMatch) {
+      let uUrl = unsplashMatch[0];
+      if (!uUrl.startsWith('http')) {
+        uUrl = `https://${uUrl.replace(/^i?mages\./, 'images.')}`;
+      }
+      return uUrl;
+    }
   }
-  return imageSrc;
+
+  // Reject Instagram post links (HTML pages, not direct images)
+  if (clean.includes('instagram.com/p/') || clean.includes('instagram.com/reel/') || clean.includes('instagram.com/tv/')) {
+    return fallback;
+  }
+
+  // Fix malformed protocol prefixes (e.g. 'ihttps//', 'http//')
+  if (clean.startsWith('ihttps://') || clean.startsWith('ihttps//') || clean.startsWith('http//') || clean.startsWith('https//')) {
+    clean = clean.replace(/^i?https?:?\/\/?/i, 'https://');
+  }
+
+  // Local uploads path
+  if (clean.startsWith('/uploads') || clean.startsWith('uploads/')) {
+    const cleanUploadPath = clean.startsWith('/') ? clean : `/${clean}`;
+    let base = getBaseApiUrl().replace(/\/+$/, '').replace(/\/api$/, '');
+    return base ? `${base}${cleanUploadPath}` : cleanUploadPath;
+  }
+
+  // Direct valid URLs
+  if (clean.startsWith('http://') || clean.startsWith('https://') || clean.startsWith('data:') || clean.startsWith('blob:')) {
+    // If concatenated with a second http in the string, extract the second if valid
+    const secondHttp = clean.indexOf('http', 8);
+    if (secondHttp !== -1) {
+      const secondPart = clean.substring(secondHttp);
+      if (secondPart.startsWith('http://') || secondPart.startsWith('https://')) {
+        return getImageUrl(secondPart, fallback);
+      }
+      return fallback;
+    }
+    return clean;
+  }
+
+  return fallback;
 };
 
 export const apiRequest = async (endpoint, options = {}) => {
@@ -66,7 +109,7 @@ export const apiRequest = async (endpoint, options = {}) => {
     defaultHeaders['Authorization'] = `Bearer ${token}`;
   }
 
-  // If body is FormData (e.g. file upload), remove Content-Type so browser sets boundary
+  // If body is FormData (e.g. file upload), remove Content-Type so browser sets multipart boundary
   if (options.body instanceof FormData) {
     delete defaultHeaders['Content-Type'];
   }
@@ -102,10 +145,11 @@ export const apiRequest = async (endpoint, options = {}) => {
 export const uploadImageFile = async (file) => {
   if (!file) throw new Error('No file selected for upload');
   
-  // Format check
-  const allowed = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp', 'image/gif'];
-  if (!allowed.includes(file.type) && !/\.(jpe?g|png|webp|gif)$/i.test(file.name)) {
-    throw new Error('Please select a valid image (JPG, JPEG, PNG, WEBP, GIF)');
+  // Format check: JPG, JPEG, PNG, WEBP
+  const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp'];
+  const isAllowedExt = /\.(jpe?g|png|webp)$/i.test(file.name);
+  if (!allowedTypes.includes(file.type) && !isAllowedExt) {
+    throw new Error('Please select a valid image file (.jpg, .jpeg, .png, .webp)');
   }
 
   // Size limit: 12MB
@@ -128,6 +172,7 @@ export const uploadImageFile = async (file) => {
  * @returns {Promise<{ success: boolean, message: string }>}
  */
 export const deleteImageFile = async (imageUrl) => {
+  if (!imageUrl) return { success: true };
   try {
     return await apiRequest('/upload', {
       method: 'DELETE',

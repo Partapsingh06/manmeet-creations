@@ -27,10 +27,10 @@ export const SingleImageUploader = ({
   };
 
   const processUpload = async (file) => {
-    // Validate format
-    const allowed = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp', 'image/gif'];
-    if (!allowed.includes(file.type) && !/\.(jpe?g|png|webp|gif)$/i.test(file.name)) {
-      addToast('Invalid image type. Please upload JPG, PNG, WEBP, or GIF.', 'error');
+    // Validate format: JPG, JPEG, PNG, WEBP
+    const allowed = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp'];
+    if (!allowed.includes(file.type) && !/\.(jpe?g|png|webp)$/i.test(file.name)) {
+      addToast('Invalid image type. Please upload JPG, JPEG, PNG, or WEBP.', 'error');
       return;
     }
 
@@ -103,7 +103,7 @@ export const SingleImageUploader = ({
       <input
         ref={fileInputRef}
         type="file"
-        accept="image/jpeg,image/jpg,image/png,image/webp,image/gif"
+        accept=".jpg,.jpeg,.png,.webp,image/jpeg,image/png,image/webp"
         onChange={handleFileChange}
         style={{ display: 'none' }}
       />
@@ -242,7 +242,7 @@ export const SingleImageUploader = ({
                 Click to Upload Image from Gallery / Computer
               </div>
               <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>
-                Supports JPG, PNG, WEBP, GIF (Max 12MB)
+                Supports JPG, JPEG, PNG, WEBP (Max 12MB)
               </div>
               <button
                 type="button"
@@ -287,9 +287,9 @@ export const MultiImageUploader = ({
 
     for (let i = 0; i < files.length; i++) {
       const file = files[i];
-      const allowed = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp', 'image/gif'];
-      if (!allowed.includes(file.type) && !/\.(jpe?g|png|webp|gif)$/i.test(file.name)) {
-        addToast(`Skipped "${file.name}": unsupported format`, 'error');
+      const allowed = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp'];
+      if (!allowed.includes(file.type) && !/\.(jpe?g|png|webp)$/i.test(file.name)) {
+        addToast(`Skipped "${file.name}": unsupported format. Only JPG, PNG, WEBP allowed.`, 'error');
         continue;
       }
       if (file.size > 12 * 1024 * 1024) {
@@ -364,7 +364,7 @@ export const MultiImageUploader = ({
         ref={fileInputRef}
         type="file"
         multiple
-        accept="image/jpeg,image/jpg,image/png,image/webp,image/gif"
+        accept=".jpg,.jpeg,.png,.webp,image/jpeg,image/png,image/webp"
         onChange={handleFileChange}
         style={{ display: 'none' }}
       />
@@ -520,7 +520,7 @@ export const MultiImageUploader = ({
               <span>{imageList.length === 0 ? 'Upload Product Images' : 'Add More Photos'}</span>
             </div>
             <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>
-              Select photos from gallery or computer (JPG, PNG, WEBP, GIF up to 12MB)
+              Select photos from gallery or computer (JPG, JPEG, PNG, WEBP up to 12MB)
             </div>
           </div>
         )}

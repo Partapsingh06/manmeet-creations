@@ -1,6 +1,17 @@
+import mongoose from 'mongoose';
 import Category from '../models/Category.js';
 import Product from '../models/Product.js';
 import { deleteFromCloudinary } from '../config/cloudinary.js';
+import { sanitizeImageUrl } from '../utils/imageSanitizer.js';
+
+// Helper to format category for response
+const formatCategoryForResponse = (cat, itemCount = 0) => {
+  if (!cat) return null;
+  const obj = cat.toObject ? cat.toObject() : { ...cat };
+  obj.image = sanitizeImageUrl(obj.image);
+  obj.itemCount = itemCount;
+  return obj;
+};
 
 // @desc    Get all categories with dynamic count
 // @route   GET /api/categories
@@ -15,10 +26,7 @@ export const getCategories = async (req, res) => {
         const count = await Product.countDocuments({
           category: { $regex: new RegExp(`^${cat.name}$`, 'i') },
         });
-        return {
-          ...cat.toObject(),
-          itemCount: count,
-        };
+        return formatCategoryForResponse(cat, count);
       })
     );
 
@@ -37,11 +45,15 @@ export const getCategories = async (req, res) => {
 export const getCategoryById = async (req, res) => {
   try {
     const { id } = req.params;
-    let category;
-    if (id.match(/^[0-9a-fA-F]{24}$/)) {
-      category = await Category.findById(id);
-    } else {
-      category = await Category.findOne({ slug: id.toLowerCase() });
+    let category = null;
+
+    if (id && typeof id === 'string') {
+      if (mongoose.isValidObjectId(id)) {
+        category = await Category.findById(id);
+      }
+      if (!category) {
+        category = await Category.findOne({ slug: id.toLowerCase() });
+      }
     }
 
     if (!category) {
@@ -54,10 +66,7 @@ export const getCategoryById = async (req, res) => {
 
     res.json({
       success: true,
-      category: {
-        ...category.toObject(),
-        itemCount,
-      },
+      category: formatCategoryForResponse(category, itemCount),
     });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });
@@ -71,8 +80,9 @@ export const createCategory = async (req, res) => {
   try {
     const { name, description, image, iconName, isFeatured } = req.body;
 
-    if (!name || !image) {
-      return res.status(400).json({ success: false, message: 'Category name and image are required' });
+    const cleanImage = sanitizeImageUrl(image, '');
+    if (!name || !cleanImage) {
+      return res.status(400).json({ success: false, message: 'Category name and a valid image are required' });
     }
 
     const slug = name.toLowerCase().trim().replace(/\s+/g, '-').replace(/[^\w\-]+/g, '');
@@ -88,14 +98,14 @@ export const createCategory = async (req, res) => {
       name: name.trim(),
       slug,
       description: description || '',
-      image,
+      image: cleanImage,
       iconName: iconName || 'Sparkles',
       isFeatured: isFeatured !== undefined ? Boolean(isFeatured) : true,
     });
 
     res.status(201).json({
       success: true,
-      category: { ...category.toObject(), itemCount: 0 },
+      category: formatCategoryForResponse(category, 0),
       message: 'Category created successfully! ✨',
     });
   } catch (error) {
@@ -108,7 +118,16 @@ export const createCategory = async (req, res) => {
 // @access  Private/Admin
 export const updateCategory = async (req, res) => {
   try {
-    const category = await Category.findById(req.params.id);
+    const { id } = req.params;
+    let category = null;
+
+    if (mongoose.isValidObjectId(id)) {
+      category = await Category.findById(id);
+    }
+    if (!category) {
+      category = await Category.findOne({ slug: id.toLowerCase() });
+    }
+
     if (!category) {
       return res.status(404).json({ success: false, message: 'Category not found' });
     }
@@ -140,7 +159,7 @@ export const updateCategory = async (req, res) => {
     }
 
     if (description !== undefined) category.description = description;
-    if (image) category.image = image;
+    if (image !== undefined) category.image = sanitizeImageUrl(image);
     if (iconName) category.iconName = iconName;
     if (isFeatured !== undefined) category.isFeatured = Boolean(isFeatured);
 
@@ -151,7 +170,7 @@ export const updateCategory = async (req, res) => {
 
     res.json({
       success: true,
-      category: { ...updated.toObject(), itemCount: count },
+      category: formatCategoryForResponse(updated, count),
       message: 'Category updated successfully! ✨',
     });
   } catch (error) {
@@ -164,7 +183,16 @@ export const updateCategory = async (req, res) => {
 // @access  Private/Admin
 export const deleteCategory = async (req, res) => {
   try {
-    const category = await Category.findById(req.params.id);
+    const { id } = req.params;
+    let category = null;
+
+    if (mongoose.isValidObjectId(id)) {
+      category = await Category.findById(id);
+    }
+    if (!category) {
+      category = await Category.findOne({ slug: id.toLowerCase() });
+    }
+
     if (!category) {
       return res.status(404).json({ success: false, message: 'Category not found' });
     }
@@ -198,7 +226,7 @@ export const deleteCategory = async (req, res) => {
       await deleteFromCloudinary(category.image).catch(() => {});
     }
 
-    await Category.deleteOne({ _id: req.params.id });
+    await Category.deleteOne({ _id: category._id });
 
     res.json({
       success: true,

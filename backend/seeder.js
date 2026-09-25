@@ -16,55 +16,55 @@ dotenv.config();
 
 export const seedData = async () => {
   try {
-    // Clear existing collections
-    await User.deleteMany({});
-    await Product.deleteMany({});
-    await Category.deleteMany({});
-    await Order.deleteMany({});
-    await CustomOrder.deleteMany({});
-    await Review.deleteMany({});
-    await ContactMessage.deleteMany({});
+    // Check if admin user exists, create if missing
+    let adminUser = await User.findOne({ role: 'admin' });
+    if (!adminUser) {
+      adminUser = await User.create({
+        name: 'Manmeet Kaur (Admin)',
+        email: process.env.ADMIN_EMAIL || 'kmeet7270@gmail.com',
+        password: process.env.ADMIN_INITIAL_PASSWORD || 'Admin@1234',
+        phone: '+91 6239661708',
+        role: 'admin',
+        addresses: [
+          {
+            street: 'VPO Tughalwal, Near Harchowal',
+            city: 'Gurdaspur',
+            state: 'Punjab',
+            postalCode: '143527',
+            country: 'India',
+            isDefault: true,
+          },
+        ],
+      });
+      console.log('👤 Admin account initialized.');
+    }
 
-    console.log('🧹 Existing database records cleared.');
+    const customerExists = await User.findOne({ email: 'customer@gmail.com' });
+    if (!customerExists) {
+      await User.create({
+        name: 'Simran Sharma',
+        email: 'customer@gmail.com',
+        password: process.env.CUSTOMER_INITIAL_PASSWORD || 'Customer@1234',
+        phone: '+91 98123 45678',
+        role: 'customer',
+        addresses: [
+          {
+            street: 'Flat 402, Rosewood Heights, MG Road',
+            city: 'Delhi',
+            state: 'Delhi',
+            postalCode: '110001',
+            country: 'India',
+            isDefault: true,
+          },
+        ],
+      });
+      console.log('👤 Demo customer account initialized.');
+    }
 
-    // 1. Create Users
-    const adminUser = await User.create({
-      name: 'Manmeet Kaur (Admin)',
-      email: process.env.ADMIN_EMAIL || 'kmeet7270@gmail.com',
-      password: process.env.ADMIN_INITIAL_PASSWORD || 'Admin@1234',
-      phone: '+91 6239661708',
-      role: 'admin',
-      addresses: [
-        {
-          street: 'VPO Tughalwal, Near Harchowal',
-          city: 'Gurdaspur',
-          state: 'Punjab',
-          postalCode: '143527',
-          country: 'India',
-          isDefault: true,
-        },
-      ],
-    });
-
-    const demoCustomer = await User.create({
-      name: 'Simran Sharma',
-      email: 'customer@gmail.com',
-      password: process.env.CUSTOMER_INITIAL_PASSWORD || 'Customer@1234',
-      phone: '+91 98123 45678',
-      role: 'customer',
-      addresses: [
-        {
-          street: 'Flat 402, Rosewood Heights, MG Road',
-          city: 'Delhi',
-          state: 'Delhi',
-          postalCode: '110001',
-          country: 'India',
-          isDefault: true,
-        },
-      ],
-    });
-
-    console.log('👤 Admin & Customer accounts initialized.');
+    const categoryCount = await Category.countDocuments();
+    if (categoryCount > 0) {
+      console.log(`📁 ${categoryCount} Categories already present in database. Preserving existing records.`);
+    }
 
     // 2. Create Categories
     const categoriesData = [

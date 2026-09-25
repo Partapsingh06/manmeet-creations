@@ -5,11 +5,26 @@ export const notFound = (req, res, next) => {
 };
 
 export const errorHandler = (err, req, res, next) => {
-  const statusCode = res.statusCode === 200 ? 500 : res.statusCode;
-  res.status(statusCode);
-  res.json({
+  let statusCode = res.statusCode === 200 ? 500 : res.statusCode;
+  let message = err.message || 'Internal Server Error';
+
+  // Handle Mongoose CastError (e.g., malformed ObjectId in route params)
+  if (err.name === 'CastError' && (err.kind === 'ObjectId' || err.path === '_id')) {
+    statusCode = 404;
+    message = 'Resource not found';
+  }
+
+  // Handle Multer upload errors
+  if (err.name === 'MulterError') {
+    statusCode = 400;
+    if (err.code === 'LIMIT_FILE_SIZE') {
+      message = 'File is too large. Maximum allowed size is 12MB.';
+    }
+  }
+
+  res.status(statusCode).json({
     success: false,
-    message: err.message,
+    message,
     stack: process.env.NODE_ENV === 'production' ? null : err.stack,
   });
 };

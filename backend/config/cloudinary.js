@@ -3,21 +3,30 @@ import dotenv from 'dotenv';
 
 dotenv.config();
 
-const cloudName = process.env.CLOUDINARY_CLOUD_NAME;
+const cloudName = process.env.CLOUDINARY_CLOUD_NAME || process.env.CLOUDINARY_NAME;
 const apiKey = process.env.CLOUDINARY_API_KEY;
 const apiSecret = process.env.CLOUDINARY_API_SECRET;
+const cloudinaryUrl = process.env.CLOUDINARY_URL;
 
 export const isCloudinaryConfigured = () => {
+  if (cloudinaryUrl && cloudinaryUrl.trim() !== '') return true;
   return Boolean(cloudName && apiKey && apiSecret);
 };
 
 if (isCloudinaryConfigured()) {
-  cloudinary.config({
-    cloud_name: cloudName,
-    api_key: apiKey,
-    api_secret: apiSecret,
-    secure: true,
-  });
+  if (cloudinaryUrl) {
+    cloudinary.config({
+      cloudinary_url: cloudinaryUrl,
+      secure: true,
+    });
+  } else {
+    cloudinary.config({
+      cloud_name: cloudName,
+      api_key: apiKey,
+      api_secret: apiSecret,
+      secure: true,
+    });
+  }
 }
 
 /**
@@ -33,7 +42,7 @@ export const uploadBufferToCloudinary = (buffer, options = {}) => {
     }
 
     const uploadOptions = {
-      folder: 'manmeet-creations',
+      folder: 'manmeet-creations/products',
       resource_type: 'image',
       ...options,
     };

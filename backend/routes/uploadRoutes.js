@@ -21,14 +21,15 @@ if (!fs.existsSync(uploadDir)) {
 const storage = multer.memoryStorage();
 
 const fileFilter = (req, file, cb) => {
-  const allowedExtensions = /jpg|jpeg|png|webp|gif/;
-  const extname = allowedExtensions.test(path.extname(file.originalname).toLowerCase());
-  const mimetype = allowedExtensions.test(file.mimetype) || file.mimetype.startsWith('image/');
+  const allowedExtensions = /jpg|jpeg|png|webp/;
+  const ext = path.extname(file.originalname).toLowerCase().replace('.', '');
+  const extname = allowedExtensions.test(ext);
+  const mimetype = /image\/(jpeg|jpg|png|webp)/.test(file.mimetype);
 
-  if (extname && mimetype) {
+  if (extname || mimetype) {
     return cb(null, true);
   } else {
-    cb(new Error('Only image files (jpg, jpeg, png, webp, gif) are allowed!'));
+    cb(new Error('Only image files (JPG, JPEG, PNG, WEBP) are allowed!'));
   }
 };
 

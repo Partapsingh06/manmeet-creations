@@ -1,6 +1,8 @@
+import mongoose from 'mongoose';
 import Product from '../models/Product.js';
 import Review from '../models/Review.js';
 import { deleteFromCloudinary } from '../config/cloudinary.js';
+import { sanitizeImageUrl, sanitizeImageList } from '../utils/imageSanitizer.js';
 
 // Helper to make clean URL slug
 const slugify = (text) => {
@@ -11,6 +13,18 @@ const slugify = (text) => {
     .replace(/\s+/g, '-')
     .replace(/[^\w\-]+/g, '')
     .replace(/\-\-+/g, '-');
+};
+
+// Helper to sanitize product document image fields for response
+const formatProductForResponse = (prod) => {
+  if (!prod) return null;
+  const obj = prod.toObject ? prod.toObject() : { ...prod };
+  const rawImages = Array.isArray(obj.images) ? obj.images : obj.images ? [obj.images] : [];
+  const cleanImages = sanitizeImageList(rawImages);
+  
+  obj.images = cleanImages.length > 0 ? cleanImages : [sanitizeImageUrl('')];
+  obj.featuredImage = sanitizeImageUrl(obj.featuredImage || obj.images[0]);
+  return obj;
 };
 
 // @desc    Fetch all products with filtering, search & sorting
@@ -58,8 +72,9 @@ export const getProducts = async (req, res) => {
     else if (sort === 'popular' || sort === 'rating') sortOption = { rating: -1, numReviews: -1 };
     else if (sort === 'oldest') sortOption = { createdAt: 1 };
 
-    const products = await Product.find(query).sort(sortOption);
+    const rawProducts = await Product.find(query).sort(sortOption);
     const totalCount = await Product.countDocuments(query);
+    const products = rawProducts.map(formatProductForResponse);
 
     res.json({
       success: true,
@@ -77,13 +92,13 @@ export const getProducts = async (req, res) => {
 // @access  Public
 export const getFeaturedProducts = async (req, res) => {
   try {
-    const products = await Product.find({ isFeatured: true }).limit(8);
+    let products = await Product.find({ isFeatured: true }).limit(8);
     // If fewer than 8 marked featured, grab up to 8 top rated
     if (products.length < 8) {
-      const topProducts = await Product.find().sort({ rating: -1 }).limit(8);
-      return res.json({ success: true, products: topProducts });
+      products = await Product.find().sort({ rating: -1 }).limit(8);
     }
-    res.json({ success: true, products });
+    const formatted = products.map(formatProductForResponse);
+    res.json({ success: true, products: formatted });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });
   }
@@ -95,12 +110,23 @@ export const getFeaturedProducts = async (req, res) => {
 export const getProductByIdOrSlug = async (req, res) => {
   try {
     const { idOrSlug } = req.params;
-    let product;
+    let product = null;
 
-    if (idOrSlug.match(/^[0-9a-fA-F]{24}$/)) {
-      product = await Product.findById(idOrSlug);
-    } else {
-      product = await Product.findOne({ slug: idOrSlug.toLowerCase() });
+    if (idOrSlug && typeof idOrSlug === 'string') {
+      if (mongoose.isValidObjectId(idOrSlug)) {
+        product = await Product.findById(idOrSlug);
+      }
+      if (!product) {
+        product = await Product.findOne({ slug: idOrSlug.toLowerCase() });
+      }
+      if (!product) {
+        // Fallback exact ID match in case of string representation
+        try {
+          product = await Product.findOne({ _id: idOrSlug });
+        } catch {
+          // ignore
+        }
+      }
     }
 
     if (!product) {
@@ -108,7 +134,7 @@ export const getProductByIdOrSlug = async (req, res) => {
     }
 
     // Get related products from the same category
-    const relatedProducts = await Product.find({
+    const relatedProductsRaw = await Product.find({
       category: product.category,
       _id: { $ne: product._id },
     }).limit(4);
@@ -118,8 +144,8 @@ export const getProductByIdOrSlug = async (req, res) => {
 
     res.json({
       success: true,
-      product,
-      relatedProducts,
+      product: formatProductForResponse(product),
+      relatedProducts: relatedProductsRaw.map(formatProductForResponse),
       reviews,
     });
   } catch (error) {
@@ -152,21 +178,19 @@ export const createProduct = async (req, res) => {
       tags,
     } = req.body;
 
-    let processedImages = [];
-    if (Array.isArray(images)) {
-      processedImages = images.filter(Boolean);
-    } else if (typeof images === 'string' && images.trim() !== '') {
-      processedImages = images.split(',').map((img) => img.trim()).filter(Boolean);
-    }
+    let processedImages = sanitizeImageList(images);
 
-    if (featuredImage && !processedImages.includes(featuredImage)) {
-      processedImages.unshift(featuredImage);
+    if (featuredImage) {
+      const cleanFeatured = sanitizeImageUrl(featuredImage, '');
+      if (cleanFeatured && !processedImages.includes(cleanFeatured)) {
+        processedImages.unshift(cleanFeatured);
+      }
     }
 
     if (!name || !price || !category || processedImages.length === 0) {
       return res.status(400).json({
         success: false,
-        message: 'Please provide product name, selling price, category, and at least one image.',
+        message: 'Please provide product name, selling price, category, and at least one valid image.',
       });
     }
 
@@ -192,7 +216,7 @@ export const createProduct = async (req, res) => {
       originalPrice: originalPrice ? Number(originalPrice) : Number(price),
       discountPercent,
       images: processedImages,
-      featuredImage: featuredImage || processedImages[0] || '',
+      featuredImage: sanitizeImageUrl(featuredImage || processedImages[0]),
       materials: Array.isArray(materials)
         ? materials
         : materials
@@ -216,7 +240,7 @@ export const createProduct = async (req, res) => {
     const createdProduct = await product.save();
     res.status(201).json({
       success: true,
-      product: createdProduct,
+      product: formatProductForResponse(createdProduct),
       message: 'Product created successfully! ✨',
     });
   } catch (error) {
@@ -229,7 +253,15 @@ export const createProduct = async (req, res) => {
 // @access  Private/Admin
 export const updateProduct = async (req, res) => {
   try {
-    const product = await Product.findById(req.params.id);
+    const { id } = req.params;
+    let product = null;
+
+    if (mongoose.isValidObjectId(id)) {
+      product = await Product.findById(id);
+    }
+    if (!product) {
+      product = await Product.findOne({ slug: id.toLowerCase() });
+    }
 
     if (!product) {
       return res.status(404).json({ success: false, message: 'Product not found' });
@@ -257,16 +289,11 @@ export const updateProduct = async (req, res) => {
     if (fields.category !== undefined) product.category = fields.category.trim();
 
     if (fields.images !== undefined) {
-      let nextImages = [];
-      if (Array.isArray(fields.images)) {
-        nextImages = fields.images.filter(Boolean);
-      } else if (typeof fields.images === 'string' && fields.images.trim() !== '') {
-        nextImages = fields.images.split(',').map((img) => img.trim()).filter(Boolean);
-      }
+      const nextImages = sanitizeImageList(fields.images);
       product.images = nextImages;
-      product.featuredImage = fields.featuredImage || nextImages[0] || '';
+      product.featuredImage = sanitizeImageUrl(fields.featuredImage || nextImages[0] || '');
     } else if (fields.featuredImage !== undefined) {
-      product.featuredImage = fields.featuredImage;
+      product.featuredImage = sanitizeImageUrl(fields.featuredImage);
     }
 
     if (fields.materials !== undefined) {
@@ -291,7 +318,7 @@ export const updateProduct = async (req, res) => {
     const updatedProduct = await product.save();
     res.json({
       success: true,
-      product: updatedProduct,
+      product: formatProductForResponse(updatedProduct),
       message: 'Product updated successfully! ✨',
     });
   } catch (error) {
@@ -304,7 +331,15 @@ export const updateProduct = async (req, res) => {
 // @access  Private/Admin
 export const deleteProduct = async (req, res) => {
   try {
-    const product = await Product.findById(req.params.id);
+    const { id } = req.params;
+    let product = null;
+
+    if (mongoose.isValidObjectId(id)) {
+      product = await Product.findById(id);
+    }
+    if (!product) {
+      product = await Product.findOne({ slug: id.toLowerCase() });
+    }
 
     if (!product) {
       return res.status(404).json({ success: false, message: 'Product not found' });
@@ -313,14 +348,14 @@ export const deleteProduct = async (req, res) => {
     // Clean up images in Cloudinary if configured
     if (product.images && product.images.length > 0) {
       for (const imgUrl of product.images) {
-        if (imgUrl.includes('cloudinary.com')) {
+        if (imgUrl && typeof imgUrl === 'string' && imgUrl.includes('cloudinary.com')) {
           await deleteFromCloudinary(imgUrl).catch(() => {});
         }
       }
     }
 
-    await Product.deleteOne({ _id: req.params.id });
-    await Review.deleteMany({ product: req.params.id });
+    await Product.deleteOne({ _id: product._id });
+    await Review.deleteMany({ product: product._id });
 
     res.json({ success: true, message: `Product "${product.name}" removed from collection` });
   } catch (error) {
@@ -334,7 +369,15 @@ export const deleteProduct = async (req, res) => {
 export const createProductReview = async (req, res) => {
   try {
     const { rating, comment, name, city } = req.body;
-    const product = await Product.findById(req.params.id);
+    const { id } = req.params;
+    let product = null;
+
+    if (mongoose.isValidObjectId(id)) {
+      product = await Product.findById(id);
+    }
+    if (!product) {
+      product = await Product.findOne({ slug: id.toLowerCase() });
+    }
 
     if (!product) {
       return res.status(404).json({ success: false, message: 'Product not found' });

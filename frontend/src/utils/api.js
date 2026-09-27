@@ -49,21 +49,6 @@ export const getImageUrl = (imageSrc, fallback = DEFAULT_PLACEHOLDER_IMAGE) => {
     return fallback;
   }
 
-  // Detect and extract embedded valid Cloudinary or Unsplash URLs if concatenated
-  if (clean.includes('cloudinary.com') || clean.includes('unsplash.com')) {
-    const cloudMatch = clean.match(/https?:\/\/[^\s"'<>]*(?:res\.cloudinary\.com|cloudinary\.com)[^\s"'<>]+/i);
-    if (cloudMatch) return cloudMatch[0];
-
-    const unsplashMatch = clean.match(/(?:https?:\/\/)?(?:i?mages\.unsplash\.com)[^\s"'<>]+/i);
-    if (unsplashMatch) {
-      let uUrl = unsplashMatch[0];
-      if (!uUrl.startsWith('http')) {
-        uUrl = `https://${uUrl.replace(/^i?mages\./, 'images.')}`;
-      }
-      return uUrl;
-    }
-  }
-
   // Reject Instagram post links (HTML pages, not direct images)
   if (clean.includes('instagram.com/p/') || clean.includes('instagram.com/reel/') || clean.includes('instagram.com/tv/')) {
     return fallback;
@@ -74,28 +59,32 @@ export const getImageUrl = (imageSrc, fallback = DEFAULT_PLACEHOLDER_IMAGE) => {
     clean = clean.replace(/^i?https?:?\/\/?/i, 'https://');
   }
 
-  // Local uploads path
+  // Local uploads path (relative or with preceding slash)
   if (clean.startsWith('/uploads') || clean.startsWith('uploads/')) {
     const cleanUploadPath = clean.startsWith('/') ? clean : `/${clean}`;
     let base = getBaseApiUrl().replace(/\/+$/, '').replace(/\/api$/, '');
     return base ? `${base}${cleanUploadPath}` : cleanUploadPath;
   }
 
-  // Direct valid URLs
-  if (clean.startsWith('http://') || clean.startsWith('https://') || clean.startsWith('data:') || clean.startsWith('blob:')) {
-    // If concatenated with a second http in the string, extract the second if valid
-    const secondHttp = clean.indexOf('http', 8);
-    if (secondHttp !== -1) {
-      const secondPart = clean.substring(secondHttp);
-      if (secondPart.startsWith('http://') || secondPart.startsWith('https://')) {
-        return getImageUrl(secondPart, fallback);
-      }
-      return fallback;
-    }
+  // Full URL containing /uploads/
+  if (clean.includes('/uploads/')) {
+    const uploadIdx = clean.indexOf('/uploads/');
+    const cleanUploadPath = clean.substring(uploadIdx);
+    let base = getBaseApiUrl().replace(/\/+$/, '').replace(/\/api$/, '');
+    return base ? `${base}${cleanUploadPath}` : cleanUploadPath;
+  }
+
+  // Direct valid URLs (HTTP, HTTPS, Base64 Data URLs, Blob URLs)
+  if (
+    clean.startsWith('http://') ||
+    clean.startsWith('https://') ||
+    clean.startsWith('data:image/') ||
+    clean.startsWith('blob:')
+  ) {
     return clean;
   }
 
-  return fallback;
+  return clean || fallback;
 };
 
 export const apiRequest = async (endpoint, options = {}) => {

@@ -45,7 +45,7 @@ export const CartProvider = ({ children }) => {
             name: product.name,
             price: Number(product.price),
             originalPrice: Number(product.originalPrice || product.price),
-            image: getImageUrl(Array.isArray(product.images) && product.images.length > 0 ? product.images[0] : (product.featuredImage || product.image)),
+            image: getImageUrl(product.featuredImage || (Array.isArray(product.images) && product.images.length > 0 ? product.images[0] : product.image)),
             category: product.category,
             quantity: Number(quantity),
             customNote: customNote || '',

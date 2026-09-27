@@ -76,14 +76,11 @@ export const SingleImageUploader = ({
     setDragActive(false);
   };
 
-  const handleDelete = async () => {
+  const handleDelete = () => {
     if (!value) return;
-    if (window.confirm('Are you sure you want to remove this image?')) {
-      const oldUrl = value;
+    if (window.confirm('Are you sure you want to remove this photo?')) {
       onChange('');
-      addToast('Image removed', 'info');
-      // Background cleanup from storage if applicable
-      deleteImageFile(oldUrl).catch(() => {});
+      addToast('Image removed from selection', 'info');
     }
   };
 
@@ -134,11 +131,8 @@ export const SingleImageUploader = ({
           >
             <img
               src={getImageUrl(value)}
-              alt="Preview"
+              alt="Uploaded Preview"
               style={{ width: '100%', height: '100%', objectFit: 'cover' }}
-              onError={(e) => {
-                e.target.src = 'https://images.unsplash.com/photo-1598300042247-d088f8ab3a91?auto=format&fit=crop&w=300&q=80';
-              }}
             />
           </div>
 
@@ -330,14 +324,10 @@ export const MultiImageUploader = ({
   };
 
   const handleDeleteImage = (indexToDelete) => {
-    const targetUrl = imageList[indexToDelete];
-    if (window.confirm('Are you sure you want to delete this image?')) {
+    if (window.confirm('Are you sure you want to remove this photo from the product?')) {
       const updated = imageList.filter((_, idx) => idx !== indexToDelete);
       onChange(updated);
-      addToast('Image removed from product', 'info');
-      if (targetUrl) {
-        deleteImageFile(targetUrl).catch(() => {});
-      }
+      addToast('Photo removed from product selection', 'info');
     }
   };
 
@@ -397,11 +387,8 @@ export const MultiImageUploader = ({
             >
               <img
                 src={getImageUrl(imgUrl)}
-                alt={`Product ${idx + 1}`}
+                alt={`Product Photo ${idx + 1}`}
                 style={{ width: '100%', height: '100%', objectFit: 'cover' }}
-                onError={(e) => {
-                  e.target.src = 'https://images.unsplash.com/photo-1598300042247-d088f8ab3a91?auto=format&fit=crop&w=300&q=80';
-                }}
               />
 
               {/* Primary Image Badge */}

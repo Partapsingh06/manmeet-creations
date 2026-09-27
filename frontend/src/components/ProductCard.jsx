@@ -13,9 +13,8 @@ export const ProductCard = ({ product, onQuickView }) => {
 
   const isLiked = isInWishlist(product._id || product.id);
   const rawImage =
-    (Array.isArray(product.images) && product.images.length > 0)
-      ? product.images[0]
-      : (product.featuredImage || product.image);
+    product.featuredImage ||
+    (Array.isArray(product.images) && product.images.length > 0 ? product.images[0] : product.image);
   const imageUrl = getImageUrl(rawImage);
 
   const discount = product.discountPercent || (

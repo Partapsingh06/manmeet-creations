@@ -134,8 +134,10 @@ export const seedData = async () => {
       },
     ];
 
-    const createdCategories = await Category.insertMany(categoriesData);
-    console.log(`📁 ${createdCategories.length} Categories seeded.`);
+    if (categoryCount === 0) {
+      const createdCategories = await Category.insertMany(categoriesData);
+      console.log(`📁 ${createdCategories.length} Categories seeded.`);
+    }
 
     // 3. Create 24 Handcrafted Boutique Products
     const productsData = [

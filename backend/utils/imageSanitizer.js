@@ -5,7 +5,7 @@
 
 const DEFAULT_PLACEHOLDER = 'https://images.unsplash.com/photo-1598300042247-d088f8ab3a91?auto=format&fit=crop&w=800&q=80';
 
-export const sanitizeImageUrl = (url, fallback = DEFAULT_PLACEHOLDER) => {
+export const sanitizeImageUrl = (url, fallback = '') => {
   if (!url || typeof url !== 'string') return fallback;
   let clean = url.trim();
 
@@ -13,51 +13,36 @@ export const sanitizeImageUrl = (url, fallback = DEFAULT_PLACEHOLDER) => {
     return fallback;
   }
 
-  // Detect and fix concatenated URLs (e.g. instagram + unsplash or double https)
-  if (clean.includes('cloudinary.com') || clean.includes('unsplash.com')) {
-    const cloudMatch = clean.match(/https?:\/\/[^\s"'<>]*(?:res\.cloudinary\.com|cloudinary\.com)[^\s"'<>]+/i);
-    if (cloudMatch) return cloudMatch[0];
-
-    const unsplashMatch = clean.match(/(?:https?:\/\/)?(?:i?mages\.unsplash\.com)[^\s"'<>]+/i);
-    if (unsplashMatch) {
-      let uUrl = unsplashMatch[0];
-      if (!uUrl.startsWith('http')) {
-        uUrl = `https://${uUrl.replace(/^i?mages\./, 'images.')}`;
-      }
-      return uUrl;
-    }
-  }
-
-  // Reject Instagram post links (not direct images)
+  // Reject Instagram post links (HTML pages, not direct image files)
   if (clean.includes('instagram.com/p/') || clean.includes('instagram.com/reel/') || clean.includes('instagram.com/tv/')) {
     return fallback;
   }
 
-  // Fix malformed protocol prefixes (e.g. 'ihttps//', 'http//')
+  // If local /uploads path (e.g. from full URL or relative path)
+  if (clean.includes('/uploads/')) {
+    const uploadIdx = clean.indexOf('/uploads/');
+    return clean.substring(uploadIdx);
+  }
+  if (clean.startsWith('uploads/')) {
+    return `/${clean}`;
+  }
+
+  // If it's a Cloudinary or Unsplash URL, ensure valid protocol
   if (clean.startsWith('ihttps://') || clean.startsWith('ihttps//') || clean.startsWith('http//') || clean.startsWith('https//')) {
     clean = clean.replace(/^i?https?:?\/\/?/i, 'https://');
   }
 
-  // Local uploads path
-  if (clean.startsWith('/uploads') || clean.startsWith('uploads/')) {
-    return clean.startsWith('/') ? clean : `/${clean}`;
-  }
-
-  // Direct valid URLs
-  if (clean.startsWith('http://') || clean.startsWith('https://') || clean.startsWith('data:') || clean.startsWith('blob:')) {
-    // If concatenated with a second http, extract the second one if valid
-    const secondHttp = clean.indexOf('http', 8);
-    if (secondHttp !== -1) {
-      const secondPart = clean.substring(secondHttp);
-      if (secondPart.startsWith('http://') || secondPart.startsWith('https://')) {
-        return sanitizeImageUrl(secondPart, fallback);
-      }
-      return fallback;
-    }
+  // Direct valid URLs (HTTP, HTTPS, Base64 Data URI, Blob)
+  if (
+    clean.startsWith('http://') ||
+    clean.startsWith('https://') ||
+    clean.startsWith('data:image/') ||
+    clean.startsWith('blob:')
+  ) {
     return clean;
   }
 
-  return fallback;
+  return clean || fallback;
 };
 
 export const sanitizeImageList = (images) => {

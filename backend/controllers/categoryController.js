@@ -8,7 +8,7 @@ import { sanitizeImageUrl } from '../utils/imageSanitizer.js';
 const formatCategoryForResponse = (cat, itemCount = 0) => {
   if (!cat) return null;
   const obj = cat.toObject ? cat.toObject() : { ...cat };
-  obj.image = sanitizeImageUrl(obj.image);
+  obj.image = sanitizeImageUrl(obj.image, obj.image || '');
   obj.itemCount = itemCount;
   return obj;
 };
@@ -159,7 +159,9 @@ export const updateCategory = async (req, res) => {
     }
 
     if (description !== undefined) category.description = description;
-    if (image !== undefined) category.image = sanitizeImageUrl(image);
+    if (image !== undefined && typeof image === 'string' && image.trim() !== '') {
+      category.image = sanitizeImageUrl(image, category.image);
+    }
     if (iconName) category.iconName = iconName;
     if (isFeatured !== undefined) category.isFeatured = Boolean(isFeatured);
 

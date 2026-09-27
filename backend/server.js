@@ -77,16 +77,37 @@ if (process.env.NODE_ENV !== 'production') {
   app.use(morgan('dev'));
 }
 
+import { fileURLToPath } from 'url';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
 // Body parsers
 app.use(express.json({ limit: '25mb' }));
 app.use(express.urlencoded({ extended: true, limit: '25mb' }));
 
-// Static uploads folder
-const uploadsDir = path.join(process.cwd(), 'uploads');
-if (!fs.existsSync(uploadsDir)) {
-  fs.mkdirSync(uploadsDir, { recursive: true });
+// Static uploads folders (both backend/uploads and root/uploads)
+const backendUploadsDir = path.resolve(__dirname, 'uploads');
+const rootUploadsDir = path.resolve(__dirname, '../uploads');
+
+if (!fs.existsSync(backendUploadsDir)) {
+  fs.mkdirSync(backendUploadsDir, { recursive: true });
 }
-app.use('/uploads', express.static(uploadsDir));
+if (!fs.existsSync(rootUploadsDir)) {
+  fs.mkdirSync(rootUploadsDir, { recursive: true });
+}
+
+// Serve static uploaded assets with proper headers
+app.use(
+  '/uploads',
+  (req, res, next) => {
+    res.setHeader('Access-Control-Allow-Origin', '*');
+    res.setHeader('Cross-Origin-Resource-Policy', 'cross-origin');
+    next();
+  },
+  express.static(backendUploadsDir),
+  express.static(rootUploadsDir)
+);
 
 // Health check endpoint
 app.get('/api/health', (req, res) => {

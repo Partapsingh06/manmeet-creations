@@ -9,8 +9,13 @@ const apiSecret = process.env.CLOUDINARY_API_SECRET;
 const cloudinaryUrl = process.env.CLOUDINARY_URL;
 
 export const isCloudinaryConfigured = () => {
-  if (cloudinaryUrl && cloudinaryUrl.trim() !== '') return true;
-  return Boolean(cloudName && apiKey && apiSecret);
+  if (cloudinaryUrl && cloudinaryUrl.trim() !== '' && !cloudinaryUrl.includes('placeholder')) return true;
+  if (!cloudName || !apiKey || !apiSecret) return false;
+  // If razorpay test key or placeholder is placed in CLOUDINARY_API_KEY, do not attempt Cloudinary
+  if (apiKey.startsWith('rzp_') || apiKey.includes('placeholder') || apiSecret.includes('placeholder')) {
+    return false;
+  }
+  return true;
 };
 
 if (isCloudinaryConfigured()) {

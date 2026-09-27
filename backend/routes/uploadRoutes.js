@@ -2,6 +2,7 @@ import express from 'express';
 import multer from 'multer';
 import path from 'path';
 import fs from 'fs';
+import { fileURLToPath } from 'url';
 import {
   isCloudinaryConfigured,
   uploadBufferToCloudinary,
@@ -11,10 +12,18 @@ import { protect, admin } from '../middleware/authMiddleware.js';
 
 const router = express.Router();
 
-// Ensure local uploads directory exists as fallback
-const uploadDir = path.join(process.cwd(), 'uploads');
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
+// Ensure local uploads directories exist (both in backend and project root if applicable)
+const uploadDir = path.resolve(__dirname, '../uploads');
+const rootUploadDir = path.resolve(__dirname, '../../uploads');
+
 if (!fs.existsSync(uploadDir)) {
   fs.mkdirSync(uploadDir, { recursive: true });
+}
+if (!fs.existsSync(rootUploadDir)) {
+  fs.mkdirSync(rootUploadDir, { recursive: true });
 }
 
 // Memory storage allows direct stream/buffer uploading to Cloudinary

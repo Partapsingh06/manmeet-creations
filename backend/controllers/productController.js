@@ -22,8 +22,8 @@ const formatProductForResponse = (prod) => {
   const rawImages = Array.isArray(obj.images) ? obj.images : obj.images ? [obj.images] : [];
   const cleanImages = sanitizeImageList(rawImages);
   
-  obj.images = cleanImages.length > 0 ? cleanImages : [sanitizeImageUrl('')];
-  obj.featuredImage = sanitizeImageUrl(obj.featuredImage || obj.images[0]);
+  obj.images = cleanImages.length > 0 ? cleanImages : (obj.featuredImage ? [sanitizeImageUrl(obj.featuredImage, obj.featuredImage)] : []);
+  obj.featuredImage = obj.featuredImage ? sanitizeImageUrl(obj.featuredImage, obj.featuredImage) : (obj.images[0] || '');
   return obj;
 };
 
@@ -182,8 +182,8 @@ export const createProduct = async (req, res) => {
 
     if (featuredImage) {
       const cleanFeatured = sanitizeImageUrl(featuredImage, '');
-      if (cleanFeatured && !processedImages.includes(cleanFeatured)) {
-        processedImages.unshift(cleanFeatured);
+      if (cleanFeatured) {
+        processedImages = [cleanFeatured, ...processedImages.filter((img) => img !== cleanFeatured)];
       }
     }
 
@@ -216,7 +216,7 @@ export const createProduct = async (req, res) => {
       originalPrice: originalPrice ? Number(originalPrice) : Number(price),
       discountPercent,
       images: processedImages,
-      featuredImage: sanitizeImageUrl(featuredImage || processedImages[0]),
+      featuredImage: processedImages[0],
       materials: Array.isArray(materials)
         ? materials
         : materials
@@ -289,11 +289,25 @@ export const updateProduct = async (req, res) => {
     if (fields.category !== undefined) product.category = fields.category.trim();
 
     if (fields.images !== undefined) {
-      const nextImages = sanitizeImageList(fields.images);
+      let nextImages = sanitizeImageList(fields.images);
+      if (fields.featuredImage) {
+        const cleanFeatured = sanitizeImageUrl(fields.featuredImage, '');
+        if (cleanFeatured) {
+          nextImages = [cleanFeatured, ...nextImages.filter((img) => img !== cleanFeatured)];
+        }
+      }
       product.images = nextImages;
-      product.featuredImage = sanitizeImageUrl(fields.featuredImage || nextImages[0] || '');
+      product.featuredImage = nextImages[0] || sanitizeImageUrl(fields.featuredImage || product.featuredImage || '');
     } else if (fields.featuredImage !== undefined) {
-      product.featuredImage = sanitizeImageUrl(fields.featuredImage);
+      const cleanFeatured = sanitizeImageUrl(fields.featuredImage, '');
+      if (cleanFeatured) {
+        product.featuredImage = cleanFeatured;
+        if (Array.isArray(product.images) && product.images.length > 0) {
+          product.images = [cleanFeatured, ...product.images.filter((img) => img !== cleanFeatured)];
+        } else {
+          product.images = [cleanFeatured];
+        }
+      }
     }
 
     if (fields.materials !== undefined) {

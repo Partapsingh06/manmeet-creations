@@ -399,12 +399,10 @@ export const AdminDashboard = () => {
         }
       } else if (type === 'product') {
         const existingImages = Array.isArray(item.images) ? [...item.images] : [];
-        if (!existingImages.includes(image)) {
-          existingImages[0] = image;
-        }
+        const updatedImages = [image, ...existingImages.filter((img) => img !== image)];
         const data = await apiRequest(`/products/${item._id}`, {
           method: 'PUT',
-          body: JSON.stringify({ images: existingImages, featuredImage: image }),
+          body: JSON.stringify({ images: updatedImages, featuredImage: image }),
         });
         if (data.success) {
           setProducts(products.map((p) => (p._id === item._id ? data.product : p)));
@@ -848,7 +846,7 @@ export const AdminDashboard = () => {
                       </thead>
                       <tbody>
                         {filteredProducts.map((p) => {
-                          const primaryImg = Array.isArray(p.images) && p.images.length > 0 ? p.images[0] : (p.featuredImage || p.image);
+                          const primaryImg = p.featuredImage || (Array.isArray(p.images) && p.images[0]) || p.image;
                           const totalImages = Array.isArray(p.images) ? p.images.length : (p.featuredImage || p.image ? 1 : 0);
                           return (
                             <tr key={p._id} style={{ borderBottom: '1px solid var(--border-light)' }}>
@@ -871,9 +869,6 @@ export const AdminDashboard = () => {
                                     src={getImageUrl(primaryImg)}
                                     alt={p.name}
                                     style={{ width: '100%', height: '100%', objectFit: 'cover' }}
-                                    onError={(e) => {
-                                      e.target.src = 'https://images.unsplash.com/photo-1598300042247-d088f8ab3a91?auto=format&fit=crop&w=150&q=80';
-                                    }}
                                   />
                                   <button
                                     onClick={() => handleOpenQuickImageModal(p, 'product')}
@@ -1054,9 +1049,6 @@ export const AdminDashboard = () => {
                           src={getImageUrl(cat.image)}
                           alt={cat.name}
                           style={{ width: '100%', height: '100%', objectFit: 'cover' }}
-                          onError={(e) => {
-                            e.target.src = 'https://images.unsplash.com/photo-1598300042247-d088f8ab3a91?auto=format&fit=crop&w=400&q=80';
-                          }}
                         />
                         
                         {/* Quick Change Image Button */}

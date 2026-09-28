@@ -20,6 +20,7 @@ import { InstagramIcon } from '../components/InstagramIcon';
 import { ProductCard } from '../components/ProductCard';
 import { QuickViewModal } from '../components/QuickViewModal';
 import { apiRequest, getImageUrl } from '../utils/api';
+import { getCategoryDefaultImage } from '../utils/categoryData';
 
 export const HomePage = () => {
   const [featuredProducts, setFeaturedProducts] = useState([]);
@@ -274,7 +275,9 @@ export const HomePage = () => {
           </div>
 
           <div className="grid-4">
-            {categories.slice(0, 8).map((category) => (
+            {categories.slice(0, 8).map((category) => {
+              const catImg = getImageUrl(getCategoryDefaultImage(category.name, category.image));
+              return (
               <Link
                 key={category._id || category.slug}
                 to={`/shop?category=${encodeURIComponent(category.name)}`}
@@ -290,7 +293,7 @@ export const HomePage = () => {
               >
                 <div style={{ position: 'relative', width: '100%', paddingTop: '75%', overflow: 'hidden' }}>
                   <img
-                    src={getImageUrl(category.image)}
+                    src={catImg}
                     alt={category.name}
                     style={{
                       position: 'absolute',
@@ -302,7 +305,7 @@ export const HomePage = () => {
                       transition: 'transform 0.5s ease',
                     }}
                     onError={(e) => {
-                      e.target.src = 'https://images.unsplash.com/photo-1598300042247-d088f8ab3a91?auto=format&fit=crop&w=600&q=80';
+                      e.target.src = getCategoryDefaultImage(category.name);
                     }}
                     onMouseEnter={(e) => (e.currentTarget.style.transform = 'scale(1.08)')}
                     onMouseLeave={(e) => (e.currentTarget.style.transform = 'scale(1)')}
@@ -335,7 +338,8 @@ export const HomePage = () => {
                   </div>
                 </div>
               </Link>
-            ))}
+              );
+            })}
           </div>
 
           <div style={{ textAlign: 'center', marginTop: '3rem' }}>

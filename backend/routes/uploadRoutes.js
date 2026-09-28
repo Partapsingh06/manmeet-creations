@@ -31,9 +31,10 @@ const storage = multer.memoryStorage();
 
 const fileFilter = (req, file, cb) => {
   const allowedExtensions = /jpg|jpeg|png|webp/;
-  const ext = path.extname(file.originalname).toLowerCase().replace('.', '');
+  const originalname = file && file.originalname ? String(file.originalname) : '';
+  const ext = path.extname(originalname).toLowerCase().replace('.', '');
   const extname = allowedExtensions.test(ext);
-  const mimetype = /image\/(jpeg|jpg|png|webp)/.test(file.mimetype);
+  const mimetype = /image\/(jpeg|jpg|png|webp)/.test(file?.mimetype || '');
 
   if (extname || mimetype) {
     return cb(null, true);

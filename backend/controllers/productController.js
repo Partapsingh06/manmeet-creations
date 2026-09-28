@@ -6,8 +6,7 @@ import { sanitizeImageUrl, sanitizeImageList } from '../utils/imageSanitizer.js'
 
 // Helper to make clean URL slug
 const slugify = (text) => {
-  return text
-    .toString()
+  return String(text || '')
     .toLowerCase()
     .trim()
     .replace(/\s+/g, '-')
@@ -117,7 +116,7 @@ export const getProductByIdOrSlug = async (req, res) => {
         product = await Product.findById(idOrSlug);
       }
       if (!product) {
-        product = await Product.findOne({ slug: idOrSlug.toLowerCase() });
+        product = await Product.findOne({ slug: String(idOrSlug).toLowerCase().trim() });
       }
       if (!product) {
         // Fallback exact ID match in case of string representation
@@ -256,11 +255,11 @@ export const updateProduct = async (req, res) => {
     const { id } = req.params;
     let product = null;
 
-    if (mongoose.isValidObjectId(id)) {
+    if (id && mongoose.isValidObjectId(id)) {
       product = await Product.findById(id);
     }
-    if (!product) {
-      product = await Product.findOne({ slug: id.toLowerCase() });
+    if (!product && id) {
+      product = await Product.findOne({ slug: String(id).toLowerCase().trim() });
     }
 
     if (!product) {
@@ -348,11 +347,11 @@ export const deleteProduct = async (req, res) => {
     const { id } = req.params;
     let product = null;
 
-    if (mongoose.isValidObjectId(id)) {
+    if (id && mongoose.isValidObjectId(id)) {
       product = await Product.findById(id);
     }
-    if (!product) {
-      product = await Product.findOne({ slug: id.toLowerCase() });
+    if (!product && id) {
+      product = await Product.findOne({ slug: String(id).toLowerCase().trim() });
     }
 
     if (!product) {
@@ -386,11 +385,11 @@ export const createProductReview = async (req, res) => {
     const { id } = req.params;
     let product = null;
 
-    if (mongoose.isValidObjectId(id)) {
+    if (id && mongoose.isValidObjectId(id)) {
       product = await Product.findById(id);
     }
-    if (!product) {
-      product = await Product.findOne({ slug: id.toLowerCase() });
+    if (!product && id) {
+      product = await Product.findOne({ slug: String(id).toLowerCase().trim() });
     }
 
     if (!product) {

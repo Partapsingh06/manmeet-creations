@@ -31,6 +31,7 @@ import {
   Tag
 } from 'lucide-react';
 import { apiRequest, getImageUrl } from '../../utils/api';
+import { getCategoryDefaultImage } from '../../utils/categoryData';
 import { useToast } from '../../context/ToastContext';
 import { useAuth } from '../../context/AuthContext';
 import { SingleImageUploader, MultiImageUploader } from '../../components/ImageUploader';
@@ -327,13 +328,16 @@ export const AdminDashboard = () => {
   };
 
   const openDeleteCategoryModal = (category) => {
-    const linkedCount = products.filter(
-      (p) => p.category?.toLowerCase() === category.name?.toLowerCase()
-    ).length;
+    const targetCatName = String(category?.name || '').trim().toLowerCase();
+    const linkedCount = targetCatName
+      ? products.filter(
+          (p) => String(p?.category || '').trim().toLowerCase() === targetCatName
+        ).length
+      : 0;
 
-    let warning = `Are you sure you want to delete category "${category.name}"?`;
+    let warning = `Are you sure you want to delete category "${category?.name || 'this category'}"?`;
     if (linkedCount > 0) {
-      warning = `Warning: ${linkedCount} active product(s) are linked to "${category.name}". If you delete this category, these products will be safely reassigned to "Handmade Crafts" so they remain visible on your store.`;
+      warning = `Warning: ${linkedCount} active product(s) are linked to "${category?.name || 'this category'}". If you delete this category, these products will be safely reassigned to "Handmade Crafts" so they remain visible on your store.`;
     }
 
     setDeleteModal({
@@ -471,22 +475,35 @@ export const AdminDashboard = () => {
 
   // Filtered Products List
   const filteredProducts = products.filter((p) => {
+    if (!p) return false;
+    const pName = String(p.name || '').toLowerCase();
+    const pCategory = String(p.category || '').toLowerCase();
+    const searchTerm = String(productSearch || '').toLowerCase().trim();
+    const filterCat = String(productCategoryFilter || 'All').toLowerCase().trim();
+
     const matchesSearch =
-      productSearch.trim() === '' ||
-      p.name?.toLowerCase().includes(productSearch.toLowerCase()) ||
-      p.category?.toLowerCase().includes(productSearch.toLowerCase());
+      !searchTerm ||
+      pName.includes(searchTerm) ||
+      pCategory.includes(searchTerm);
+
     const matchesCategory =
-      productCategoryFilter === 'All' ||
-      p.category?.toLowerCase() === productCategoryFilter.toLowerCase();
+      filterCat === 'all' ||
+      pCategory === filterCat;
+
     return matchesSearch && matchesCategory;
   });
 
   // Filtered Categories List
   const filteredCategories = categories.filter((c) => {
+    if (!c) return false;
+    const cName = String(c.name || '').toLowerCase();
+    const cDesc = String(c.description || '').toLowerCase();
+    const searchTerm = String(categorySearch || '').toLowerCase().trim();
+
     return (
-      categorySearch.trim() === '' ||
-      c.name?.toLowerCase().includes(categorySearch.toLowerCase()) ||
-      c.description?.toLowerCase().includes(categorySearch.toLowerCase())
+      !searchTerm ||
+      cName.includes(searchTerm) ||
+      cDesc.includes(searchTerm)
     );
   });
 
@@ -1026,9 +1043,12 @@ export const AdminDashboard = () => {
               {/* Categories Grid */}
               <div className="grid-3" style={{ gap: '1.5rem' }}>
                 {filteredCategories.map((cat) => {
-                  const linkedCount = products.filter(
-                    (p) => p.category?.toLowerCase() === cat.name?.toLowerCase()
-                  ).length;
+                  const targetCatName = String(cat?.name || '').trim().toLowerCase();
+                  const linkedCount = targetCatName
+                    ? products.filter(
+                        (p) => String(p?.category || '').trim().toLowerCase() === targetCatName
+                      ).length
+                    : 0;
 
                   return (
                     <div
@@ -1046,9 +1066,12 @@ export const AdminDashboard = () => {
                       {/* Category Image with Quick Change Overlay */}
                       <div style={{ position: 'relative', width: '100%', height: '170px', overflow: 'hidden', backgroundColor: 'var(--bg-cream)' }}>
                         <img
-                          src={getImageUrl(cat.image)}
+                          src={getImageUrl(getCategoryDefaultImage(cat.name, cat.image))}
                           alt={cat.name}
                           style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                          onError={(e) => {
+                            e.target.src = getCategoryDefaultImage(cat.name);
+                          }}
                         />
                         
                         {/* Quick Change Image Button */}

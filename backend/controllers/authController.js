@@ -18,7 +18,7 @@ export const registerUser = async (req, res) => {
       return res.status(400).json({ success: false, message: 'Please provide all required fields' });
     }
 
-    const normalizedEmail = email.toLowerCase().trim();
+    const normalizedEmail = String(email || '').toLowerCase().trim();
     const userExists = await User.findOne({ email: normalizedEmail });
     if (userExists) {
       return res.status(400).json({ success: false, message: 'An account with this email already exists' });
@@ -66,7 +66,7 @@ export const loginUser = async (req, res) => {
       return res.status(400).json({ success: false, message: 'Please provide email and password' });
     }
 
-    const normalizedEmail = email.toLowerCase().trim();
+    const normalizedEmail = String(email || '').toLowerCase().trim();
     const user = await User.findOne({ email: normalizedEmail }).select('+password').populate('wishlist');
 
     if (user && (await user.matchPassword(password))) {

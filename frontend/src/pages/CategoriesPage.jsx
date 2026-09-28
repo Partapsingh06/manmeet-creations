@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { Sparkles, ArrowRight, Scissors, Palette, Gift, Gem, Layers, ChevronRight } from 'lucide-react';
 import { apiRequest, getImageUrl } from '../utils/api';
+import { getCategoryDefaultImage } from '../utils/categoryData';
 
 export const CategoriesPage = () => {
   const [categories, setCategories] = useState([]);
@@ -57,7 +58,9 @@ export const CategoriesPage = () => {
           </div>
         ) : (
           <div className="grid-3" style={{ gap: '2.5rem' }}>
-            {categories.map((cat) => (
+            {categories.map((cat) => {
+              const catImg = getImageUrl(getCategoryDefaultImage(cat.name, cat.image));
+              return (
               <Link
                 key={cat._id || cat.slug}
                 to={`/shop?category=${encodeURIComponent(cat.name)}`}
@@ -73,7 +76,7 @@ export const CategoriesPage = () => {
               >
                 <div style={{ position: 'relative', width: '100%', paddingTop: '80%', overflow: 'hidden' }}>
                   <img
-                    src={getImageUrl(cat.image)}
+                    src={catImg}
                     alt={cat.name}
                     style={{
                       position: 'absolute',
@@ -85,7 +88,7 @@ export const CategoriesPage = () => {
                       transition: 'transform 0.6s cubic-bezier(0.25, 0.8, 0.25, 1)',
                     }}
                     onError={(e) => {
-                      e.target.src = 'https://images.unsplash.com/photo-1598300042247-d088f8ab3a91?auto=format&fit=crop&w=600&q=80';
+                      e.target.src = getCategoryDefaultImage(cat.name);
                     }}
                     onMouseEnter={(e) => (e.currentTarget.style.transform = 'scale(1.08)')}
                     onMouseLeave={(e) => (e.currentTarget.style.transform = 'scale(1)')}
@@ -122,7 +125,8 @@ export const CategoriesPage = () => {
                   </div>
                 </div>
               </Link>
-            ))}
+              );
+            })}
           </div>
         )}
       </div>

@@ -21,7 +21,7 @@ import { useCart } from '../context/CartContext';
 import { useWishlist } from '../context/WishlistContext';
 import { useAuth } from '../context/AuthContext';
 import { useToast } from '../context/ToastContext';
-import { apiRequest, getImageUrl } from '../utils/api';
+import { apiRequest, getImageUrl, DEFAULT_PLACEHOLDER_IMAGE } from '../utils/api';
 
 export const ProductDetailsPage = () => {
   const { idOrSlug } = useParams();
@@ -203,6 +203,10 @@ export const ProductDetailsPage = () => {
               <img
                 src={images[selectedImage] || images[0]}
                 alt={product.name}
+                onError={(e) => {
+                  e.currentTarget.onerror = null;
+                  e.currentTarget.src = DEFAULT_PLACEHOLDER_IMAGE;
+                }}
                 style={{ width: '100%', height: '100%', objectFit: 'cover' }}
               />
 
@@ -234,7 +238,15 @@ export const ProductDetailsPage = () => {
                       backgroundColor: '#FFFFFF',
                     }}
                   >
-                    <img src={img} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                    <img
+                      src={img}
+                      alt=""
+                      onError={(e) => {
+                        e.currentTarget.onerror = null;
+                        e.currentTarget.src = DEFAULT_PLACEHOLDER_IMAGE;
+                      }}
+                      style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                    />
                   </button>
                 ))}
               </div>

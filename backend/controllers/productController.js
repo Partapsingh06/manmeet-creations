@@ -38,15 +38,71 @@ const slugify = (text) => {
     .replace(/\-\-+/g, '-');
 };
 
+const categoryFallbackImages = {
+  'handmade embroidery': 'https://images.unsplash.com/photo-1598300042247-d088f8ab3a91?auto=format&fit=crop&w=800&q=80',
+  'resin art': 'https://images.unsplash.com/photo-1579783900882-c0d3dad7b119?auto=format&fit=crop&w=800&q=80',
+  'fabric painting': 'https://images.unsplash.com/photo-1579783902614-a3fb3927b675?auto=format&fit=crop&w=800&q=80',
+  'portraits': 'https://images.unsplash.com/photo-1544717305-2782549b5136?auto=format&fit=crop&w=800&q=80',
+  'handmade gift': 'https://images.unsplash.com/photo-1513519245088-0e12902e5a38?auto=format&fit=crop&w=800&q=80',
+  'customized gift': 'https://images.unsplash.com/photo-1549465220-1a8b9238cd48?auto=format&fit=crop&w=800&q=80',
+  'handmade jewellery': 'https://images.unsplash.com/photo-1535632066927-ab7c9ab60908?auto=format&fit=crop&w=800&q=80',
+  'decorative crafts': 'https://images.unsplash.com/photo-1582562124811-c09040d0a901?auto=format&fit=crop&w=800&q=80',
+};
+
+const getCategoryFallbackImage = (categoryName) => {
+  const cat = String(categoryName || '').trim().toLowerCase();
+  for (const [key, url] of Object.entries(categoryFallbackImages)) {
+    if (cat.includes(key) || key.includes(cat)) {
+      return url;
+    }
+  }
+  return 'https://images.unsplash.com/photo-1598300042247-d088f8ab3a91?auto=format&fit=crop&w=800&q=80';
+};
+
 // Helper to sanitize product document image fields for response
 const formatProductForResponse = (prod) => {
   if (!prod) return null;
   const obj = prod.toObject ? prod.toObject() : { ...prod };
   const rawImages = Array.isArray(obj.images) ? obj.images : obj.images ? [obj.images] : [];
-  const cleanImages = sanitizeImageList(rawImages);
-  
-  obj.images = cleanImages.length > 0 ? cleanImages : (obj.featuredImage ? [sanitizeImageUrl(obj.featuredImage, obj.featuredImage)] : []);
-  obj.featuredImage = obj.featuredImage ? sanitizeImageUrl(obj.featuredImage, obj.featuredImage) : (obj.images[0] || '');
+  let cleanImages = sanitizeImageList(rawImages);
+  const fallback = getCategoryFallbackImage(obj.category);
+
+  // If local /uploads path is saved in DB but the file is missing from local disk, fallback gracefully
+  cleanImages = cleanImages.map((img) => {
+    if (typeof img === 'string' && (img.startsWith('/uploads/') || img.startsWith('uploads/'))) {
+      const filename = path.basename(img);
+      const existsLocally =
+        fs.existsSync(path.join(backendUploadsDir, filename)) ||
+        fs.existsSync(path.join(rootUploadsDir, filename));
+      if (!existsLocally) {
+        return fallback;
+      }
+    }
+    return img;
+  });
+
+  if (cleanImages.length === 0) {
+    cleanImages = [fallback];
+  }
+
+  obj.images = cleanImages;
+  obj.featuredImage = obj.featuredImage
+    ? sanitizeImageUrl(obj.featuredImage, cleanImages[0])
+    : cleanImages[0];
+
+  if (
+    typeof obj.featuredImage === 'string' &&
+    (obj.featuredImage.startsWith('/uploads/') || obj.featuredImage.startsWith('uploads/'))
+  ) {
+    const filename = path.basename(obj.featuredImage);
+    const existsLocally =
+      fs.existsSync(path.join(backendUploadsDir, filename)) ||
+      fs.existsSync(path.join(rootUploadsDir, filename));
+    if (!existsLocally) {
+      obj.featuredImage = cleanImages[0];
+    }
+  }
+
   return obj;
 };
 

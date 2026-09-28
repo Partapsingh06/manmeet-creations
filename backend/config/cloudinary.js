@@ -18,21 +18,31 @@ export const isCloudinaryConfigured = () => {
   return true;
 };
 
-if (isCloudinaryConfigured()) {
-  if (cloudinaryUrl) {
+export const ensureCloudinaryConfig = () => {
+  if (!isCloudinaryConfigured()) return false;
+  const cName = process.env.CLOUDINARY_CLOUD_NAME || process.env.CLOUDINARY_NAME;
+  const aKey = process.env.CLOUDINARY_API_KEY;
+  const aSecret = process.env.CLOUDINARY_API_SECRET;
+  const cUrl = process.env.CLOUDINARY_URL;
+
+  if (cUrl && cUrl.trim() !== '') {
     cloudinary.config({
-      cloudinary_url: cloudinaryUrl,
+      cloudinary_url: cUrl.trim(),
       secure: true,
     });
-  } else {
+  } else if (cName && aKey && aSecret) {
     cloudinary.config({
-      cloud_name: cloudName,
-      api_key: apiKey,
-      api_secret: apiSecret,
+      cloud_name: cName.trim(),
+      api_key: String(aKey).trim(),
+      api_secret: String(aSecret).trim(),
       secure: true,
     });
   }
-}
+  return true;
+};
+
+// Initial config attempt
+ensureCloudinaryConfig();
 
 /**
  * Upload buffer to Cloudinary
@@ -42,7 +52,7 @@ if (isCloudinaryConfigured()) {
  */
 export const uploadBufferToCloudinary = (buffer, options = {}) => {
   return new Promise((resolve, reject) => {
-    if (!isCloudinaryConfigured()) {
+    if (!ensureCloudinaryConfig()) {
       return reject(new Error('Cloudinary credentials are not configured.'));
     }
 
@@ -124,7 +134,7 @@ export const extractCloudinaryPublicId = (url) => {
  * @returns {Promise<Object>}
  */
 export const deleteFromCloudinary = async (publicIdOrUrl) => {
-  if (!isCloudinaryConfigured() || !publicIdOrUrl) {
+  if (!ensureCloudinaryConfig() || !publicIdOrUrl) {
     return { success: false, message: 'Cloudinary not configured or invalid id' };
   }
 

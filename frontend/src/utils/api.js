@@ -38,8 +38,40 @@ export const buildUrl = (endpoint) => {
 };
 
 /**
+ * Normalizes and cleans Cloudinary URLs:
+ * - Fixes protocol (https://)
+ * - Repairs malformed transformations such as `q_auto:best:1`, `q_auto:good:1`, `q_auto:1`
+ * - Removes double slashes
+ */
+export const cleanCloudinaryUrl = (url) => {
+  if (!url || typeof url !== 'string' || !url.includes('cloudinary.com')) {
+    return url;
+  }
+  let clean = url.trim();
+
+  // Fix protocol prefixes
+  if (clean.startsWith('//')) {
+    clean = `https:${clean}`;
+  }
+  if (clean.startsWith('res.cloudinary.com') || clean.startsWith('cloudinary.com')) {
+    clean = `https://${clean}`;
+  }
+  clean = clean.replace(/^i?https?:?\/?\/?/i, 'https://');
+
+  // Fix malformed quality transformations such as q_auto:best:1 or q_auto:good:1 or q_auto:1
+  clean = clean.replace(/q_auto:(best|good|eco|low):\d+/g, 'q_auto:$1');
+  clean = clean.replace(/q_auto:\d+/g, 'q_auto');
+
+  // Fix double slashes in path
+  clean = clean.replace(/(https?:\/\/res\.cloudinary\.com\/[^/]+)\/\/+/g, '$1/');
+  clean = clean.replace(/\/upload\/\/+/g, '/upload/');
+
+  return clean;
+};
+
+/**
  * Robust image URL sanitizer
- * Catches concatenated URLs (e.g. instagram + unsplash), malformed schemas, and HTML links
+ * Catches concatenated URLs, malformed schemas, and broken transformation queries
  */
 export const getImageUrl = (imageSrc, fallback = DEFAULT_PLACEHOLDER_IMAGE) => {
   if (!imageSrc || typeof imageSrc !== 'string') return fallback;
@@ -54,27 +86,19 @@ export const getImageUrl = (imageSrc, fallback = DEFAULT_PLACEHOLDER_IMAGE) => {
     return fallback;
   }
 
+  // Handle Cloudinary URLs with auto-repair
+  if (clean.includes('cloudinary.com')) {
+    return cleanCloudinaryUrl(clean);
+  }
+
   // Fix protocol-less URLs
   if (clean.startsWith('//')) {
     clean = `https:${clean}`;
-  }
-  if (clean.startsWith('res.cloudinary.com') || clean.startsWith('cloudinary.com')) {
-    clean = `https://${clean}`;
   }
 
   // Fix malformed protocol prefixes (e.g. 'ihttps//', 'http//')
   if (clean.startsWith('ihttps://') || clean.startsWith('ihttps//') || clean.startsWith('http//') || clean.startsWith('https//')) {
     clean = clean.replace(/^i?https?:?\/?\/?/i, 'https://');
-  }
-
-  // Direct valid URLs (HTTP, HTTPS, Base64 Data URLs, Blob URLs)
-  if (
-    clean.startsWith('http://') ||
-    clean.startsWith('https://') ||
-    clean.startsWith('data:image/') ||
-    clean.startsWith('blob:')
-  ) {
-    return clean;
   }
 
   // Local uploads path (relative or with preceding slash)
@@ -90,6 +114,16 @@ export const getImageUrl = (imageSrc, fallback = DEFAULT_PLACEHOLDER_IMAGE) => {
     const cleanUploadPath = clean.substring(uploadIdx);
     let base = getBaseApiUrl().replace(/\/+$/, '').replace(/\/api$/, '');
     return base ? `${base}${cleanUploadPath}` : cleanUploadPath;
+  }
+
+  // Direct valid URLs (HTTP, HTTPS, Base64 Data URLs, Blob URLs for local temporary preview)
+  if (
+    clean.startsWith('http://') ||
+    clean.startsWith('https://') ||
+    clean.startsWith('data:image/') ||
+    clean.startsWith('blob:')
+  ) {
+    return clean;
   }
 
   // Anything that's not a recognized URL pattern is invalid — return fallback

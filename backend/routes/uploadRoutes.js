@@ -8,6 +8,7 @@ import {
   uploadBufferToCloudinary,
   deleteFromCloudinary,
 } from '../config/cloudinary.js';
+import { sanitizeImageUrl } from '../utils/imageSanitizer.js';
 import { protect, admin } from '../middleware/authMiddleware.js';
 
 const router = express.Router();
@@ -30,13 +31,13 @@ if (!fs.existsSync(rootUploadDir)) {
 const storage = multer.memoryStorage();
 
 const fileFilter = (req, file, cb) => {
-  const allowedExtensions = /jpg|jpeg|png|webp/;
+  const allowedExtensions = /jpg|jpeg|png|webp|jfif|svg/;
   const originalname = file && file.originalname ? String(file.originalname) : '';
   const ext = path.extname(originalname).toLowerCase().replace('.', '');
   const extname = allowedExtensions.test(ext);
-  const mimetype = /image\/(jpeg|jpg|png|webp)/.test(file?.mimetype || '');
+  const mimetype = /image\/(jpeg|jpg|png|webp|jfif|svg\+xml)/.test(file?.mimetype || '');
 
-  if (extname || mimetype) {
+  if (extname || mimetype || (file?.mimetype && file.mimetype.startsWith('image/'))) {
     return cb(null, true);
   } else {
     cb(new Error('Only image files (JPG, JPEG, PNG, WEBP) are allowed!'));
@@ -66,9 +67,10 @@ router.post('/', upload.single('image'), async (req, res) => {
         const cloudResult = await uploadBufferToCloudinary(req.file.buffer, {
           folder: 'manmeet-creations/products',
         });
+        const secureUrl = sanitizeImageUrl(cloudResult.secure_url || cloudResult.url);
         return res.json({
           success: true,
-          imageUrl: cloudResult.secure_url,
+          imageUrl: secureUrl,
           publicId: cloudResult.public_id,
           message: 'Image uploaded to cloud storage successfully! ✨',
         });
@@ -81,8 +83,14 @@ router.post('/', upload.single('image'), async (req, res) => {
     const ext = path.extname(req.file.originalname) || '.jpg';
     const uniqueName = `craft-${Date.now()}-${Math.round(Math.random() * 1e9)}${ext}`;
     const filePath = path.join(uploadDir, uniqueName);
+    const rootFilePath = path.join(rootUploadDir, uniqueName);
 
     fs.writeFileSync(filePath, req.file.buffer);
+    try {
+      fs.writeFileSync(rootFilePath, req.file.buffer);
+    } catch {
+      // ignore
+    }
 
     const fileUrl = `/uploads/${uniqueName}`;
     res.json({
@@ -115,7 +123,8 @@ router.post('/multiple', upload.array('images', 8), async (req, res) => {
           const cloudResult = await uploadBufferToCloudinary(file.buffer, {
             folder: 'manmeet-creations/products',
           });
-          uploadedUrls.push(cloudResult.secure_url);
+          const secureUrl = sanitizeImageUrl(cloudResult.secure_url || cloudResult.url);
+          uploadedUrls.push(secureUrl);
           continue;
         } catch (cloudError) {
           console.warn('Cloudinary multiple upload error:', cloudError.message);
@@ -126,7 +135,15 @@ router.post('/multiple', upload.array('images', 8), async (req, res) => {
       const ext = path.extname(file.originalname) || '.jpg';
       const uniqueName = `craft-${Date.now()}-${Math.round(Math.random() * 1e9)}${ext}`;
       const filePath = path.join(uploadDir, uniqueName);
+      const rootFilePath = path.join(rootUploadDir, uniqueName);
+
       fs.writeFileSync(filePath, file.buffer);
+      try {
+        fs.writeFileSync(rootFilePath, file.buffer);
+      } catch {
+        // ignore
+      }
+
       uploadedUrls.push(`/uploads/${uniqueName}`);
     }
 

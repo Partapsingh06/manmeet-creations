@@ -1,6 +1,6 @@
 import React, { useState, useRef } from 'react';
 import { Upload, X, Check, Image as ImageIcon, Trash2, Star, Loader2, RefreshCw } from 'lucide-react';
-import { uploadImageFile, getImageUrl, deleteImageFile } from '../utils/api';
+import { uploadImageFile, getImageUrl, deleteImageFile, DEFAULT_PLACEHOLDER_IMAGE } from '../utils/api';
 import { useToast } from '../context/ToastContext';
 
 /**
@@ -132,6 +132,10 @@ export const SingleImageUploader = ({
             <img
               src={getImageUrl(value)}
               alt="Uploaded Preview"
+              onError={(e) => {
+                e.currentTarget.onerror = null;
+                e.currentTarget.src = DEFAULT_PLACEHOLDER_IMAGE;
+              }}
               style={{ width: '100%', height: '100%', objectFit: 'cover' }}
             />
           </div>
@@ -388,6 +392,10 @@ export const MultiImageUploader = ({
               <img
                 src={getImageUrl(imgUrl)}
                 alt={`Product Photo ${idx + 1}`}
+                onError={(e) => {
+                  e.currentTarget.onerror = null;
+                  e.currentTarget.src = DEFAULT_PLACEHOLDER_IMAGE;
+                }}
                 style={{ width: '100%', height: '100%', objectFit: 'cover' }}
               />
 

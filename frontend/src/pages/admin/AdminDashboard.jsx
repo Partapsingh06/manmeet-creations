@@ -30,7 +30,7 @@ import {
   Image as ImageIcon,
   Tag
 } from 'lucide-react';
-import { apiRequest, getImageUrl } from '../../utils/api';
+import { apiRequest, getImageUrl, DEFAULT_PLACEHOLDER_IMAGE } from '../../utils/api';
 import { getCategoryDefaultImage } from '../../utils/categoryData';
 import { useToast } from '../../context/ToastContext';
 import { useAuth } from '../../context/AuthContext';
@@ -897,6 +897,10 @@ export const AdminDashboard = () => {
                                   <img
                                     src={getImageUrl(primaryImg)}
                                     alt={p.name}
+                                    onError={(e) => {
+                                      e.currentTarget.onerror = null;
+                                      e.currentTarget.src = DEFAULT_PLACEHOLDER_IMAGE;
+                                    }}
                                     style={{ width: '100%', height: '100%', objectFit: 'cover' }}
                                   />
                                   <button
@@ -1244,7 +1248,15 @@ export const AdminDashboard = () => {
                     <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '1rem', marginBottom: '1.2rem' }}>
                       {ord.orderItems?.map((item, i) => (
                         <div key={i} style={{ display: 'flex', gap: '0.8rem', alignItems: 'center', backgroundColor: 'var(--bg-cream)', padding: '0.6rem 0.8rem', borderRadius: 'var(--radius-sm)' }}>
-                          <img src={getImageUrl(item.image)} alt="" style={{ width: '40px', height: '40px', borderRadius: '4px', objectFit: 'cover' }} />
+                          <img
+                            src={getImageUrl(item.image)}
+                            alt=""
+                            onError={(e) => {
+                              e.currentTarget.onerror = null;
+                              e.currentTarget.src = DEFAULT_PLACEHOLDER_IMAGE;
+                            }}
+                            style={{ width: '40px', height: '40px', borderRadius: '4px', objectFit: 'cover' }}
+                          />
                           <div style={{ flex: 1, fontSize: '0.85rem' }}>
                             <div style={{ fontWeight: 600 }}>{item.name}</div>
                             <div style={{ color: 'var(--text-muted)' }}>Qty: {item.quantity} (₹{item.price * item.quantity})</div>
@@ -1813,7 +1825,15 @@ export const AdminDashboard = () => {
               <X size={20} />
             </button>
             <h3 style={{ fontSize: '1.2rem', marginBottom: '0.8rem' }}>Reference Image - {viewCustomOrder.whatWouldYouLike}</h3>
-            <img src={getImageUrl(viewCustomOrder.referenceImage)} alt="Reference" style={{ width: '100%', maxHeight: '400px', objectFit: 'contain', borderRadius: 'var(--radius-md)' }} />
+            <img
+              src={getImageUrl(viewCustomOrder.referenceImage)}
+              alt="Reference"
+              onError={(e) => {
+                e.currentTarget.onerror = null;
+                e.currentTarget.src = DEFAULT_PLACEHOLDER_IMAGE;
+              }}
+              style={{ width: '100%', maxHeight: '400px', objectFit: 'contain', borderRadius: 'var(--radius-md)' }}
+            />
           </div>
         </div>
       )}

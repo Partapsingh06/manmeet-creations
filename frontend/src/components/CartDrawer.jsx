@@ -2,6 +2,7 @@ import React from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { X, Trash2, ShoppingBag, ArrowRight, Sparkles, ShieldCheck } from 'lucide-react';
 import { useCart } from '../context/CartContext';
+import { DEFAULT_PLACEHOLDER_IMAGE } from '../utils/api';
 
 export const CartDrawer = () => {
   const {
@@ -128,6 +129,10 @@ export const CartDrawer = () => {
                   <img
                     src={item.image}
                     alt={item.name}
+                    onError={(e) => {
+                      e.currentTarget.onerror = null;
+                      e.currentTarget.src = DEFAULT_PLACEHOLDER_IMAGE;
+                    }}
                     style={{ width: '72px', height: '72px', objectFit: 'cover', borderRadius: 'var(--radius-sm)', backgroundColor: 'var(--bg-subtle)' }}
                   />
                   <div style={{ flex: 1 }}>

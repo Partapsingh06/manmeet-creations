@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom';
 import { X, Star, ShoppingBag, Heart, Check, Truck, Clock, Sparkles } from 'lucide-react';
 import { useCart } from '../context/CartContext';
 import { useWishlist } from '../context/WishlistContext';
-import { getImageUrl } from '../utils/api';
+import { getImageUrl, DEFAULT_PLACEHOLDER_IMAGE } from '../utils/api';
 
 export const QuickViewModal = ({ product, onClose }) => {
   const [selectedImage, setSelectedImage] = useState(0);
@@ -55,6 +55,10 @@ export const QuickViewModal = ({ product, onClose }) => {
               <img
                 src={images[selectedImage] || images[0]}
                 alt={product.name}
+                onError={(e) => {
+                  e.currentTarget.onerror = null;
+                  e.currentTarget.src = DEFAULT_PLACEHOLDER_IMAGE;
+                }}
                 style={{ width: '100%', height: '100%', objectFit: 'cover' }}
               />
             </div>
@@ -76,7 +80,15 @@ export const QuickViewModal = ({ product, onClose }) => {
                       flexShrink: 0,
                     }}
                   >
-                    <img src={img} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                    <img
+                      src={img}
+                      alt=""
+                      onError={(e) => {
+                        e.currentTarget.onerror = null;
+                        e.currentTarget.src = DEFAULT_PLACEHOLDER_IMAGE;
+                      }}
+                      style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                    />
                   </button>
                 ))}
               </div>

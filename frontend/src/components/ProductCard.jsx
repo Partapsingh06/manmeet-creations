@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom';
 import { Heart, ShoppingBag, Eye, Star, Sparkles } from 'lucide-react';
 import { useCart } from '../context/CartContext';
 import { useWishlist } from '../context/WishlistContext';
-import { getImageUrl } from '../utils/api';
+import { getImageUrl, DEFAULT_PLACEHOLDER_IMAGE } from '../utils/api';
 
 export const ProductCard = ({ product, onQuickView }) => {
   const { addToCart } = useCart();
@@ -33,6 +33,10 @@ export const ProductCard = ({ product, onQuickView }) => {
             src={imageUrl}
             alt={product.name}
             loading="lazy"
+            onError={(e) => {
+              e.currentTarget.onerror = null;
+              e.currentTarget.src = DEFAULT_PLACEHOLDER_IMAGE;
+            }}
             style={{
               position: 'absolute',
               top: 0,

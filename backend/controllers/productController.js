@@ -1,8 +1,32 @@
 import mongoose from 'mongoose';
+import path from 'path';
+import fs from 'fs';
+import { fileURLToPath } from 'url';
 import Product from '../models/Product.js';
 import Review from '../models/Review.js';
 import { deleteFromCloudinary } from '../config/cloudinary.js';
 import { sanitizeImageUrl, sanitizeImageList } from '../utils/imageSanitizer.js';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+const backendUploadsDir = path.resolve(__dirname, '../uploads');
+const rootUploadsDir = path.resolve(__dirname, '../../uploads');
+
+// Helper to remove local uploaded image from disk
+const removeLocalImageFile = (imageUrl) => {
+  if (!imageUrl || typeof imageUrl !== 'string') return;
+  if (imageUrl.startsWith('/uploads/') || imageUrl.startsWith('uploads/')) {
+    const filename = path.basename(imageUrl);
+    const p1 = path.join(backendUploadsDir, filename);
+    const p2 = path.join(rootUploadsDir, filename);
+    try {
+      if (fs.existsSync(p1)) fs.unlinkSync(p1);
+      if (fs.existsSync(p2)) fs.unlinkSync(p2);
+    } catch (e) {
+      console.warn('Could not remove local image file:', e.message);
+    }
+  }
+};
 
 // Helper to make clean URL slug
 const slugify = (text) => {
@@ -103,30 +127,40 @@ export const getFeaturedProducts = async (req, res) => {
   }
 };
 
+// Helper to find a product document by ObjectId, slug, or string _id
+export const findProductByIdOrSlug = async (identifier) => {
+  if (!identifier) return null;
+  const clean = String(identifier).trim();
+  if (!clean) return null;
+
+  let product = null;
+  if (mongoose.isValidObjectId(clean)) {
+    product = await Product.findById(clean);
+  }
+  if (!product) {
+    product = await Product.findOne({ slug: clean.toLowerCase() });
+  }
+  if (!product) {
+    try {
+      product = await Product.findOne({ _id: clean });
+    } catch {
+      // ignore
+    }
+  }
+  return product;
+};
+
 // @desc    Fetch single product by ID or Slug
 // @route   GET /api/products/:idOrSlug
 // @access  Public
 export const getProductByIdOrSlug = async (req, res) => {
   try {
-    const { idOrSlug } = req.params;
-    let product = null;
-
-    if (idOrSlug && typeof idOrSlug === 'string') {
-      if (mongoose.isValidObjectId(idOrSlug)) {
-        product = await Product.findById(idOrSlug);
-      }
-      if (!product) {
-        product = await Product.findOne({ slug: String(idOrSlug).toLowerCase().trim() });
-      }
-      if (!product) {
-        // Fallback exact ID match in case of string representation
-        try {
-          product = await Product.findOne({ _id: idOrSlug });
-        } catch {
-          // ignore
-        }
-      }
+    const idOrSlug = req.params.idOrSlug || req.params.id;
+    if (!idOrSlug) {
+      return res.status(400).json({ success: false, message: 'Product ID or slug is required' });
     }
+
+    const product = await findProductByIdOrSlug(idOrSlug);
 
     if (!product) {
       return res.status(404).json({ success: false, message: 'Product not found' });
@@ -248,19 +282,16 @@ export const createProduct = async (req, res) => {
 };
 
 // @desc    Update a product
-// @route   PUT /api/products/:id
+// @route   PUT /api/products/:idOrSlug
 // @access  Private/Admin
 export const updateProduct = async (req, res) => {
   try {
-    const { id } = req.params;
-    let product = null;
+    const id = req.params.id || req.params.idOrSlug;
+    if (!id) {
+      return res.status(400).json({ success: false, message: 'Product ID or slug is required' });
+    }
 
-    if (id && mongoose.isValidObjectId(id)) {
-      product = await Product.findById(id);
-    }
-    if (!product && id) {
-      product = await Product.findOne({ slug: String(id).toLowerCase().trim() });
-    }
+    const product = await findProductByIdOrSlug(id);
 
     if (!product) {
       return res.status(404).json({ success: false, message: 'Product not found' });
@@ -340,57 +371,67 @@ export const updateProduct = async (req, res) => {
 };
 
 // @desc    Delete a product
-// @route   DELETE /api/products/:id
+// @route   DELETE /api/products/:idOrSlug
 // @access  Private/Admin
 export const deleteProduct = async (req, res) => {
   try {
-    const { id } = req.params;
-    let product = null;
+    const id = req.params.id || req.params.idOrSlug;
+    if (!id) {
+      return res.status(400).json({ success: false, message: 'Product ID or slug is required' });
+    }
 
-    if (id && mongoose.isValidObjectId(id)) {
-      product = await Product.findById(id);
-    }
-    if (!product && id) {
-      product = await Product.findOne({ slug: String(id).toLowerCase().trim() });
-    }
+    const product = await findProductByIdOrSlug(id);
 
     if (!product) {
       return res.status(404).json({ success: false, message: 'Product not found' });
     }
 
-    // Clean up images in Cloudinary if configured
-    if (product.images && product.images.length > 0) {
-      for (const imgUrl of product.images) {
-        if (imgUrl && typeof imgUrl === 'string' && imgUrl.includes('cloudinary.com')) {
-          await deleteFromCloudinary(imgUrl).catch(() => {});
+    // Clean up images in Cloudinary or local disk
+    const allImages = [
+      ...(Array.isArray(product.images) ? product.images : []),
+      product.featuredImage,
+    ].filter(Boolean);
+
+    for (const imgUrl of allImages) {
+      if (imgUrl && typeof imgUrl === 'string') {
+        if (imgUrl.includes('cloudinary.com')) {
+          await deleteFromCloudinary(imgUrl).catch((err) => {
+            console.warn('Cloudinary delete warning on product removal:', err.message);
+          });
+        } else if (imgUrl.startsWith('/uploads/') || imgUrl.startsWith('uploads/')) {
+          removeLocalImageFile(imgUrl);
         }
       }
     }
 
-    await Product.deleteOne({ _id: product._id });
-    await Review.deleteMany({ product: product._id });
+    // Permanently delete product document and its reviews from MongoDB
+    const deletedId = product._id;
+    const productName = product.name;
+    await Product.deleteOne({ _id: deletedId });
+    await Review.deleteMany({ product: deletedId });
 
-    res.json({ success: true, message: `Product "${product.name}" removed from collection` });
+    res.json({
+      success: true,
+      deletedId,
+      message: `Product "${productName}" permanently deleted from database`,
+    });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });
   }
 };
 
 // @desc    Create product review
-// @route   POST /api/products/:id/reviews
+// @route   POST /api/products/:idOrSlug/reviews
 // @access  Public / Authenticated
 export const createProductReview = async (req, res) => {
   try {
     const { rating, comment, name, city } = req.body;
-    const { id } = req.params;
-    let product = null;
+    const id = req.params.id || req.params.idOrSlug;
+    if (!id) {
+      return res.status(400).json({ success: false, message: 'Product ID is required' });
+    }
 
-    if (id && mongoose.isValidObjectId(id)) {
-      product = await Product.findById(id);
-    }
-    if (!product && id) {
-      product = await Product.findOne({ slug: String(id).toLowerCase().trim() });
-    }
+    const product = await findProductByIdOrSlug(id);
 
     if (!product) {
       return res.status(404).json({ success: false, message: 'Product not found' });

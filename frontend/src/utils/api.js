@@ -54,9 +54,27 @@ export const getImageUrl = (imageSrc, fallback = DEFAULT_PLACEHOLDER_IMAGE) => {
     return fallback;
   }
 
+  // Fix protocol-less URLs
+  if (clean.startsWith('//')) {
+    clean = `https:${clean}`;
+  }
+  if (clean.startsWith('res.cloudinary.com') || clean.startsWith('cloudinary.com')) {
+    clean = `https://${clean}`;
+  }
+
   // Fix malformed protocol prefixes (e.g. 'ihttps//', 'http//')
   if (clean.startsWith('ihttps://') || clean.startsWith('ihttps//') || clean.startsWith('http//') || clean.startsWith('https//')) {
-    clean = clean.replace(/^i?https?:?\/\/?/i, 'https://');
+    clean = clean.replace(/^i?https?:?\/?\/?/i, 'https://');
+  }
+
+  // Direct valid URLs (HTTP, HTTPS, Base64 Data URLs, Blob URLs)
+  if (
+    clean.startsWith('http://') ||
+    clean.startsWith('https://') ||
+    clean.startsWith('data:image/') ||
+    clean.startsWith('blob:')
+  ) {
+    return clean;
   }
 
   // Local uploads path (relative or with preceding slash)
@@ -74,17 +92,8 @@ export const getImageUrl = (imageSrc, fallback = DEFAULT_PLACEHOLDER_IMAGE) => {
     return base ? `${base}${cleanUploadPath}` : cleanUploadPath;
   }
 
-  // Direct valid URLs (HTTP, HTTPS, Base64 Data URLs, Blob URLs)
-  if (
-    clean.startsWith('http://') ||
-    clean.startsWith('https://') ||
-    clean.startsWith('data:image/') ||
-    clean.startsWith('blob:')
-  ) {
-    return clean;
-  }
-
-  return clean || fallback;
+  // Anything that's not a recognized URL pattern is invalid — return fallback
+  return fallback;
 };
 
 export const apiRequest = async (endpoint, options = {}) => {

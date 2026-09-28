@@ -27,7 +27,13 @@ export const sanitizeImageUrl = (url, fallback = '') => {
     return `/${clean}`;
   }
 
-  // If it's a Cloudinary or Unsplash URL, ensure valid protocol
+  // Fix protocol prefixes
+  if (clean.startsWith('//')) {
+    clean = `https:${clean}`;
+  }
+  if (clean.startsWith('res.cloudinary.com') || clean.startsWith('cloudinary.com')) {
+    clean = `https://${clean}`;
+  }
   if (clean.startsWith('ihttps://') || clean.startsWith('ihttps//') || clean.startsWith('http//') || clean.startsWith('https//')) {
     clean = clean.replace(/^i?https?:?\/\/?/i, 'https://');
   }
@@ -42,7 +48,12 @@ export const sanitizeImageUrl = (url, fallback = '') => {
     return clean;
   }
 
-  return clean || fallback;
+  // If local /uploads path
+  if (clean.startsWith('/uploads/') || clean.startsWith('uploads/')) {
+    return clean.startsWith('/') ? clean : `/${clean}`;
+  }
+
+  return fallback;
 };
 
 export const sanitizeImageList = (images) => {

@@ -255,9 +255,21 @@ export const AdminDashboard = () => {
     try {
       const data = await apiRequest(`/products/${deleteModal.item._id}`, { method: 'DELETE' });
       if (data.success) {
-        setProducts(products.filter((p) => p._id !== deleteModal.item._id));
-        addToast(`Product "${deleteModal.item.name}" deleted`, 'info');
+        // Remove from local state immediately
+        setProducts((prev) => prev.filter((p) => p._id !== deleteModal.item._id));
+        addToast(`Product "${deleteModal.item.name}" permanently deleted`, 'info');
         setDeleteModal({ open: false, type: null, item: null, warning: '', loading: false });
+
+        // Also refresh from server to ensure list is in sync with database
+        try {
+          const prodsRes = await apiRequest('/products');
+          if (prodsRes.success) setProducts(prodsRes.products || []);
+        } catch {
+          // Ignore refresh errors — local state already updated
+        }
+      } else {
+        addToast(data.message || 'Delete failed — product may not exist', 'error');
+        setDeleteModal((prev) => ({ ...prev, loading: false }));
       }
     } catch (err) {
       addToast(err.message || 'Failed to delete product', 'error');

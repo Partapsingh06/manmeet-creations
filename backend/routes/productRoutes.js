@@ -23,6 +23,7 @@ router.route('/:idOrSlug')
   .put(protect, admin, updateProduct)
   .delete(protect, admin, deleteProduct);
 
+router.post('/:idOrSlug/reviews', createProductReview);
 router.post('/:id/reviews', createProductReview);
 
 export default router;

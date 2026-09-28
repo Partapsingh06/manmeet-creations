@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Sparkles, Eye, Maximize2 } from 'lucide-react';
 import { LightboxModal } from '../components/LightboxModal';
+import { HERO_FEATURED_IMAGE } from '../utils/categoryData';
 
 export const GalleryPage = () => {
   const [selectedFilter, setSelectedFilter] = useState('All');
@@ -11,7 +12,7 @@ export const GalleryPage = () => {
       id: 1,
       title: 'Bridal Floral Couple Wedding Hoop',
       category: 'Embroidery',
-      image: 'https://images.unsplash.com/photo-1598300042247-d088f8ab3a91?auto=format&fit=crop&w=1200&q=80',
+      image: HERO_FEATURED_IMAGE,
       aspect: 'tall',
     },
     {

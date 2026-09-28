@@ -17,6 +17,12 @@ export const CATEGORY_IMAGE_MAP = {
 };
 
 /**
+ * Default Hero Section Featured Artwork Image (Easily configurable)
+ * Beautiful handmade floral embroidery hoop artwork matching the cream, beige & soft pink theme.
+ */
+export const HERO_FEATURED_IMAGE = 'https://tse1.mm.bing.net/th/id/OIP.1pN9caN2nSmEolbhHiy0mAHaJ7?r=0&pid=Api&h=220&P=0';
+
+/**
  * Returns the exact assigned image for a category by name, falling back to any valid provided image or default placeholder.
  */
 export const getCategoryDefaultImage = (categoryName, fallbackImage = '') => {
@@ -24,5 +30,5 @@ export const getCategoryDefaultImage = (categoryName, fallbackImage = '') => {
   if (CATEGORY_IMAGE_MAP[normalized]) {
     return CATEGORY_IMAGE_MAP[normalized];
   }
-  return fallbackImage || 'https://tse1.mm.bing.net/th/id/OIP.1pN9caN2nSmEolbhHiy0mAHaJ7?r=0&pid=Api&h=220&P=0';
+  return fallbackImage || HERO_FEATURED_IMAGE;
 };

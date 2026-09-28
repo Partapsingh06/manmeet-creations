@@ -20,7 +20,10 @@ import { InstagramIcon } from '../components/InstagramIcon';
 import { ProductCard } from '../components/ProductCard';
 import { QuickViewModal } from '../components/QuickViewModal';
 import { apiRequest, getImageUrl } from '../utils/api';
-import { getCategoryDefaultImage } from '../utils/categoryData';
+import { getCategoryDefaultImage, HERO_FEATURED_IMAGE } from '../utils/categoryData';
+
+// Configurable Hero Section Featured Image (easily replaceable here or via categoryData)
+const HERO_IMAGE = HERO_FEATURED_IMAGE;
 
 export const HomePage = () => {
   const [featuredProducts, setFeaturedProducts] = useState([]);
@@ -66,7 +69,7 @@ export const HomePage = () => {
   };
 
   const instagramImages = [
-    { url: 'https://images.unsplash.com/photo-1598300042247-d088f8ab3a91?auto=format&fit=crop&w=600&q=80', tag: '#EmbroideryHoop' },
+    { url: HERO_FEATURED_IMAGE, tag: '#EmbroideryHoop' },
     { url: 'https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?auto=format&fit=crop&w=600&q=80', tag: '#OceanResin' },
     { url: 'https://images.unsplash.com/photo-1544717305-2782549b5136?auto=format&fit=crop&w=600&q=80', tag: '#FabricPainting' },
     { url: 'https://images.unsplash.com/photo-1579783902614-a3fb3927b675?auto=format&fit=crop&w=600&q=80', tag: '#CustomPortraits' },
@@ -195,8 +198,8 @@ export const HomePage = () => {
                   }}
                 >
                   <img
-                    src="https://images.unsplash.com/photo-1598300042247-d088f8ab3a91?auto=format&fit=crop&w=900&q=80"
-                    alt="Manmeet Creations Handcrafted Embroidery Art"
+                    src={HERO_IMAGE}
+                    alt="Manmeet Creations Handcrafted Embroidery & Artisan Art"
                     style={{ width: '100%', height: '100%', objectFit: 'cover' }}
                   />
                 </div>

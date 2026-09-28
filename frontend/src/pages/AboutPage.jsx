@@ -1,6 +1,7 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
 import { Sparkles, Heart, Palette, Scissors, ShieldCheck, CheckCircle2, ArrowRight } from 'lucide-react';
+import { HERO_FEATURED_IMAGE } from '../utils/categoryData';
 
 export const AboutPage = () => {
   return (
@@ -73,8 +74,8 @@ export const AboutPage = () => {
               }}
             >
               <img
-                src="https://images.unsplash.com/photo-1598300042247-d088f8ab3a91?auto=format&fit=crop&w=900&q=80"
-                alt="Manmeet Studio Embroidery"
+                src={HERO_FEATURED_IMAGE}
+                alt="Manmeet Studio Handmade Embroidery Art"
                 style={{ width: '100%', height: '100%', objectFit: 'cover' }}
               />
             </div>

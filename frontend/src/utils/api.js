@@ -1,6 +1,4 @@
-// Manmeet Creations - Central API Client Configuration
-const DEFAULT_PROD_API_URL = 'https://manmeet-creations.onrender.com';
-export const DEFAULT_PLACEHOLDER_IMAGE = 'https://tse1.mm.bing.net/th/id/OIP.1pN9caN2nSmEolbhHiy0mAHaJ7?r=0&pid=Api&h=220&P=0';
+export const DEFAULT_PLACEHOLDER_IMAGE = 'https://images.unsplash.com/photo-1598300042247-d088f8ab3a91?auto=format&fit=crop&w=800&q=80';
 
 export const getBaseApiUrl = () => {
   const envUrl = import.meta.env.VITE_API_URL;

@@ -72,7 +72,7 @@ export const seedData = async () => {
         name: 'Handmade Embroidery',
         slug: 'handmade-embroidery',
         description: 'Delicate floral hoops, personalized wedding calendar hoops, and intricate thread work.',
-        image: 'https://tse1.mm.bing.net/th/id/OIP.1pN9caN2nSmEolbhHiy0mAHaJ7?r=0&pid=Api&h=220&P=0',
+        image: 'https://images.unsplash.com/photo-1598300042247-d088f8ab3a91?auto=format&fit=crop&w=800&q=80',
         iconName: 'Scissors',
         isFeatured: true,
       },
@@ -80,7 +80,7 @@ export const seedData = async () => {
         name: 'Resin Art',
         slug: 'resin-art',
         description: 'Glossy ocean wave wall clocks, geode platters, floral preserved preservation blocks & coasters.',
-        image: 'https://tse1.mm.bing.net/th/id/OIP.dlAspPjeTueR2a-yylVfQgHaEK?r=0&pid=Api&h=220&P=0',
+        image: 'https://images.unsplash.com/photo-1579783900882-c0d3dad7b119?auto=format&fit=crop&w=800&q=80',
         iconName: 'Sparkles',
         isFeatured: true,
       },
@@ -88,7 +88,7 @@ export const seedData = async () => {
         name: 'Fabric Painting',
         slug: 'fabric-painting',
         description: 'Custom hand-painted organza dupattas, canvas tote bags, denim jackets, and cushion covers.',
-        image: 'https://tse2.mm.bing.net/th/id/OIP.zFDMyBBuzRkg1Bt82kl8PwHaEK?r=0&pid=Api&h=220&P=0',
+        image: 'https://images.unsplash.com/photo-1579783902614-a3fb3927b675?auto=format&fit=crop&w=800&q=80',
         iconName: 'Palette',
         isFeatured: true,
       },
@@ -96,7 +96,7 @@ export const seedData = async () => {
         name: 'Portraits',
         slug: 'portraits',
         description: 'Hand-drawn charcoal sketches, vibrant watercolor couple portraits, and realistic digital oil art.',
-        image: 'https://tse2.mm.bing.net/th/id/OIP.UEhulIfX9VYoWq78GB2qfgHaJ3?r=0&pid=Api&h=220&P=0',
+        image: 'https://images.unsplash.com/photo-1544717305-2782549b5136?auto=format&fit=crop&w=800&q=80',
         iconName: 'Image',
         isFeatured: true,
       },
@@ -104,7 +104,7 @@ export const seedData = async () => {
         name: 'Handmade Gift',
         slug: 'handmade-gift',
         description: 'Heartfelt explosion boxes, customized photo scrapbooks, love hampers, and wooden photo plaques.',
-        image: 'https://tse1.mm.bing.net/th/id/OIP.LmZ7SNJB4wiph8EsbuPttQHaLH?r=0&pid=Api&h=220&P=0',
+        image: 'https://images.unsplash.com/photo-1513519245088-0e12902e5a38?auto=format&fit=crop&w=800&q=80',
         iconName: 'Gift',
         isFeatured: true,
       },
@@ -112,7 +112,7 @@ export const seedData = async () => {
         name: 'Customized Gift',
         slug: 'customized-gift',
         description: 'Personalized name lamps, customized calendar frames, couple nameplates, and memory frames.',
-        image: 'https://cdn.shopify.com/s/files/1/2690/0106/files/pink-card-hand-stitched-flowers-faef3548-858ba64178224b6ea52447387c5c8c4b_480x480.jpg?v=1719993524',
+        image: 'https://images.unsplash.com/photo-1549465220-1a8b9238cd48?auto=format&fit=crop&w=800&q=80',
         iconName: 'HeartHandshake',
         isFeatured: true,
       },
@@ -142,13 +142,16 @@ export const seedData = async () => {
         ]
       });
       if (existing) {
-        existing.image = cat.image;
-        await existing.save();
+        // Never overwrite user-uploaded/custom category images
+        if (!existing.image || existing.image.trim() === '') {
+          existing.image = cat.image;
+          await existing.save();
+        }
       } else {
         await Category.create(cat);
       }
     }
-    console.log(`📁 ${categoriesData.length} Categories verified & images synchronized.`);
+    console.log(`📁 ${categoriesData.length} Categories verified.`);
 
     // 3. Create 24 Handcrafted Boutique Products
     const productsData = [

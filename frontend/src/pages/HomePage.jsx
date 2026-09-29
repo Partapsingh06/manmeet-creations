@@ -19,7 +19,7 @@ import {
 import { InstagramIcon } from '../components/InstagramIcon';
 import { ProductCard } from '../components/ProductCard';
 import { QuickViewModal } from '../components/QuickViewModal';
-import { apiRequest, getImageUrl } from '../utils/api';
+import { apiRequest, getImageUrl, DEFAULT_PLACEHOLDER_IMAGE } from '../utils/api';
 import { getCategoryDefaultImage, HERO_FEATURED_IMAGE } from '../utils/categoryData';
 
 // Configurable Hero Section Featured Image (easily replaceable here or via categoryData)
@@ -279,7 +279,7 @@ export const HomePage = () => {
 
           <div className="grid-4">
             {categories.slice(0, 8).map((category) => {
-              const catImg = getImageUrl(getCategoryDefaultImage(category.name, category.image));
+              const catImg = getImageUrl(category.image || getCategoryDefaultImage(category.name, category.image));
               return (
               <Link
                 key={category._id || category.slug}
@@ -308,7 +308,8 @@ export const HomePage = () => {
                       transition: 'transform 0.5s ease',
                     }}
                     onError={(e) => {
-                      e.target.src = getCategoryDefaultImage(category.name);
+                      e.currentTarget.onerror = null;
+                      e.currentTarget.src = DEFAULT_PLACEHOLDER_IMAGE;
                     }}
                     onMouseEnter={(e) => (e.currentTarget.style.transform = 'scale(1.08)')}
                     onMouseLeave={(e) => (e.currentTarget.style.transform = 'scale(1)')}

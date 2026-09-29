@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { Sparkles, ArrowRight, Scissors, Palette, Gift, Gem, Layers, ChevronRight } from 'lucide-react';
-import { apiRequest, getImageUrl } from '../utils/api';
+import { apiRequest, getImageUrl, DEFAULT_PLACEHOLDER_IMAGE } from '../utils/api';
 import { getCategoryDefaultImage } from '../utils/categoryData';
 
 export const CategoriesPage = () => {
@@ -59,7 +59,7 @@ export const CategoriesPage = () => {
         ) : (
           <div className="grid-3" style={{ gap: '2.5rem' }}>
             {categories.map((cat) => {
-              const catImg = getImageUrl(getCategoryDefaultImage(cat.name, cat.image));
+              const catImg = getImageUrl(cat.image || getCategoryDefaultImage(cat.name, cat.image));
               return (
               <Link
                 key={cat._id || cat.slug}
@@ -88,7 +88,8 @@ export const CategoriesPage = () => {
                       transition: 'transform 0.6s cubic-bezier(0.25, 0.8, 0.25, 1)',
                     }}
                     onError={(e) => {
-                      e.target.src = getCategoryDefaultImage(cat.name);
+                      e.currentTarget.onerror = null;
+                      e.currentTarget.src = DEFAULT_PLACEHOLDER_IMAGE;
                     }}
                     onMouseEnter={(e) => (e.currentTarget.style.transform = 'scale(1.08)')}
                     onMouseLeave={(e) => (e.currentTarget.style.transform = 'scale(1)')}

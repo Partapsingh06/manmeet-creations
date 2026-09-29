@@ -4,27 +4,12 @@ import Product from '../models/Product.js';
 import { deleteFromCloudinary } from '../config/cloudinary.js';
 import { sanitizeImageUrl } from '../utils/imageSanitizer.js';
 
-const CATEGORY_DEFAULT_IMAGES = {
-  'handmade embroidery': 'https://tse1.mm.bing.net/th/id/OIP.1pN9caN2nSmEolbhHiy0mAHaJ7?r=0&pid=Api&h=220&P=0',
-  'resin art': 'https://tse1.mm.bing.net/th/id/OIP.dlAspPjeTueR2a-yylVfQgHaEK?r=0&pid=Api&h=220&P=0',
-  'fabric painting': 'https://tse2.mm.bing.net/th/id/OIP.zFDMyBBuzRkg1Bt82kl8PwHaEK?r=0&pid=Api&h=220&P=0',
-  'portraits': 'https://tse2.mm.bing.net/th/id/OIP.UEhulIfX9VYoWq78GB2qfgHaJ3?r=0&pid=Api&h=220&P=0',
-  'portrait': 'https://tse2.mm.bing.net/th/id/OIP.UEhulIfX9VYoWq78GB2qfgHaJ3?r=0&pid=Api&h=220&P=0',
-  'handmade gift': 'https://tse1.mm.bing.net/th/id/OIP.LmZ7SNJB4wiph8EsbuPttQHaLH?r=0&pid=Api&h=220&P=0',
-  'handmade gifts': 'https://tse1.mm.bing.net/th/id/OIP.LmZ7SNJB4wiph8EsbuPttQHaLH?r=0&pid=Api&h=220&P=0',
-  'customized gift': 'https://cdn.shopify.com/s/files/1/2690/0106/files/pink-card-hand-stitched-flowers-faef3548-858ba64178224b6ea52447387c5c8c4b_480x480.jpg?v=1719993524',
-  'customized gifts': 'https://cdn.shopify.com/s/files/1/2690/0106/files/pink-card-hand-stitched-flowers-faef3548-858ba64178224b6ea52447387c5c8c4b_480x480.jpg?v=1719993524',
-  'handmade jewellery': 'https://images.unsplash.com/photo-1535632066927-ab7c9ab60908?auto=format&fit=crop&w=800&q=80',
-  'decorative crafts': 'https://images.unsplash.com/photo-1582562124811-c09040d0a901?auto=format&fit=crop&w=800&q=80',
-};
-
 // Helper to format category for response
 const formatCategoryForResponse = (cat, itemCount = 0) => {
   if (!cat) return null;
   const obj = cat.toObject ? cat.toObject() : { ...cat };
-  const catKey = String(obj.name || '').trim().toLowerCase();
-  const defaultImg = CATEGORY_DEFAULT_IMAGES[catKey] || 'https://tse1.mm.bing.net/th/id/OIP.1pN9caN2nSmEolbhHiy0mAHaJ7?r=0&pid=Api&h=220&P=0';
-  obj.image = sanitizeImageUrl(obj.image, defaultImg);
+  // Preserve exact saved image URL and sanitize protocol/transformation errors
+  obj.image = sanitizeImageUrl(obj.image, obj.image || '');
   obj.itemCount = itemCount;
   return obj;
 };

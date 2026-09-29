@@ -1085,11 +1085,12 @@ export const AdminDashboard = () => {
                       {/* Category Image with Quick Change Overlay */}
                       <div style={{ position: 'relative', width: '100%', height: '170px', overflow: 'hidden', backgroundColor: 'var(--bg-cream)' }}>
                         <img
-                          src={getImageUrl(getCategoryDefaultImage(cat.name, cat.image))}
+                          src={getImageUrl(cat.image || getCategoryDefaultImage(cat.name, cat.image))}
                           alt={cat.name}
                           style={{ width: '100%', height: '100%', objectFit: 'cover' }}
                           onError={(e) => {
-                            e.target.src = getCategoryDefaultImage(cat.name);
+                            e.currentTarget.onerror = null;
+                            e.currentTarget.src = DEFAULT_PLACEHOLDER_IMAGE;
                           }}
                         />
                         

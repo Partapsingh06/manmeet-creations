@@ -1,5 +1,13 @@
+import dns from 'node:dns';
 import mongoose from 'mongoose';
 import { MongoMemoryServer } from 'mongodb-memory-server';
+
+// Configure reliable DNS servers for Node.js SRV resolution on Windows
+try {
+  dns.setServers(['1.1.1.1', '8.8.8.8']);
+} catch {
+  // Ignore DNS config errors
+}
 
 let mongoMemoryServer = null;
 
@@ -7,22 +15,22 @@ export const connectDB = async () => {
   try {
     const mongoUri = process.env.MONGODB_URI;
     
-    if (mongoUri && mongoUri !== 'mongodb://localhost:27017/manmeet-creations') {
+    if (mongoUri && mongoUri.trim() !== '') {
       try {
         const conn = await mongoose.connect(mongoUri, {
-          serverSelectionTimeoutMS: 3000,
+          serverSelectionTimeoutMS: 10000,
         });
-        console.log(`✅ External MongoDB Connected: ${conn.connection.host}`);
+        console.log(`✅ MongoDB Connected: ${conn.connection.host}`);
         return;
       } catch (err) {
-        console.log('⚠️ External MongoDB URI connection failed, falling back to embedded MongoDB...');
+        console.warn(`⚠️ Primary MongoDB connection failed (${err.message}), attempting fallback...`);
       }
     }
 
     // Try standard local MongoDB
     try {
       const conn = await mongoose.connect(process.env.MONGODB_URI || 'mongodb://127.0.0.1:27017/manmeet_creations', {
-        serverSelectionTimeoutMS: 2000,
+        serverSelectionTimeoutMS: 3000,
       });
       console.log(`✅ Local MongoDB Connected: ${conn.connection.host}`);
       return;
@@ -30,7 +38,7 @@ export const connectDB = async () => {
       console.log('ℹ️ Local MongoDB daemon not running. Launching built-in fast in-memory MongoDB engine...');
     }
 
-    // Fallback to MongoMemoryServer for instant 100% reliable execution
+    // Fallback to MongoMemoryServer for offline development
     mongoMemoryServer = await MongoMemoryServer.create();
     const uri = mongoMemoryServer.getUri();
     const conn = await mongoose.connect(uri);

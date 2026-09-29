@@ -61,7 +61,7 @@ router.post('/', upload.single('image'), async (req, res) => {
       return res.status(400).json({ success: false, message: 'No image file provided' });
     }
 
-    // 1. If Cloudinary is configured, upload buffer directly
+    // 1. If Cloudinary is configured, upload buffer directly — NO silent local fallback
     if (isCloudinaryConfigured()) {
       try {
         const cloudResult = await uploadBufferToCloudinary(req.file.buffer, {
@@ -75,11 +75,18 @@ router.post('/', upload.single('image'), async (req, res) => {
           message: 'Image uploaded to cloud storage successfully! ✨',
         });
       } catch (cloudError) {
-        console.warn('Cloudinary upload error, falling back to local storage:', cloudError.message);
+        // Cloudinary was configured but upload failed — do NOT silently fall back to local storage.
+        // Local files are ephemeral and will be lost on server restart / redeployment.
+        console.error('❌ Cloudinary upload FAILED:', cloudError.message);
+        return res.status(500).json({
+          success: false,
+          message: `Cloud image upload failed: ${cloudError.message}. Please check your Cloudinary API credentials in the server .env file (CLOUDINARY_CLOUD_NAME, CLOUDINARY_API_KEY, CLOUDINARY_API_SECRET).`,
+        });
       }
     }
 
-    // 2. Local disk fallback
+    // 2. Local disk storage — only used when Cloudinary is NOT configured (local dev without cloud creds)
+    console.warn('⚠️ Cloudinary not configured — saving image to local disk (will NOT persist on hosted deployments).');
     const ext = path.extname(req.file.originalname) || '.jpg';
     const uniqueName = `craft-${Date.now()}-${Math.round(Math.random() * 1e9)}${ext}`;
     const filePath = path.join(uploadDir, uniqueName);
@@ -96,7 +103,7 @@ router.post('/', upload.single('image'), async (req, res) => {
     res.json({
       success: true,
       imageUrl: fileUrl,
-      message: 'Image uploaded successfully! ✨',
+      message: 'Image saved to local storage (⚠️ not permanent on hosted deployments — configure Cloudinary for persistence).',
     });
   } catch (error) {
     console.error('Image upload failed:', error);
@@ -116,9 +123,10 @@ router.post('/multiple', upload.array('images', 8), async (req, res) => {
     }
 
     const uploadedUrls = [];
+    const cloudinaryEnabled = isCloudinaryConfigured();
 
     for (const file of req.files) {
-      if (isCloudinaryConfigured()) {
+      if (cloudinaryEnabled) {
         try {
           const cloudResult = await uploadBufferToCloudinary(file.buffer, {
             folder: 'manmeet-creations/products',
@@ -127,11 +135,16 @@ router.post('/multiple', upload.array('images', 8), async (req, res) => {
           uploadedUrls.push(secureUrl);
           continue;
         } catch (cloudError) {
-          console.warn('Cloudinary multiple upload error:', cloudError.message);
+          // Cloudinary configured but upload failed — stop and report error
+          console.error('❌ Cloudinary multiple upload FAILED:', cloudError.message);
+          return res.status(500).json({
+            success: false,
+            message: `Cloud image upload failed: ${cloudError.message}. Please check your Cloudinary API credentials.`,
+          });
         }
       }
 
-      // Local fallback
+      // Local fallback — only when Cloudinary is NOT configured
       const ext = path.extname(file.originalname) || '.jpg';
       const uniqueName = `craft-${Date.now()}-${Math.round(Math.random() * 1e9)}${ext}`;
       const filePath = path.join(uploadDir, uniqueName);

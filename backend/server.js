@@ -9,12 +9,11 @@ import { seedData } from './seeder.js';
 import Product from './models/Product.js';
 import User from './models/User.js';
 
+import dns from 'node:dns';
+
 // Safe DNS servers configuration for local development / Node.js
 try {
-  const dns = await import("node:dns/promises");
-  if (dns && typeof dns.setServers === 'function') {
-    dns.setServers(["1.1.1.1", "8.8.8.8"]);
-  }
+  dns.setServers(["1.1.1.1", "8.8.8.8"]);
 } catch {
   // DNS override fallback
 }

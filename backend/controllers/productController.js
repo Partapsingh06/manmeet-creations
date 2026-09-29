@@ -67,20 +67,7 @@ const formatProductForResponse = (prod) => {
   let cleanImages = sanitizeImageList(rawImages);
   const fallback = getCategoryFallbackImage(obj.category);
 
-  // If local /uploads path is saved in DB but the file is missing from local disk, fallback gracefully
-  cleanImages = cleanImages.map((img) => {
-    if (typeof img === 'string' && (img.startsWith('/uploads/') || img.startsWith('uploads/'))) {
-      const filename = path.basename(img);
-      const existsLocally =
-        fs.existsSync(path.join(backendUploadsDir, filename)) ||
-        fs.existsSync(path.join(rootUploadsDir, filename));
-      if (!existsLocally) {
-        return fallback;
-      }
-    }
-    return img;
-  });
-
+  // If product has no valid images stored, use safe fallback
   if (cleanImages.length === 0) {
     cleanImages = [fallback];
   }
@@ -89,19 +76,6 @@ const formatProductForResponse = (prod) => {
   obj.featuredImage = obj.featuredImage
     ? sanitizeImageUrl(obj.featuredImage, cleanImages[0])
     : cleanImages[0];
-
-  if (
-    typeof obj.featuredImage === 'string' &&
-    (obj.featuredImage.startsWith('/uploads/') || obj.featuredImage.startsWith('uploads/'))
-  ) {
-    const filename = path.basename(obj.featuredImage);
-    const existsLocally =
-      fs.existsSync(path.join(backendUploadsDir, filename)) ||
-      fs.existsSync(path.join(rootUploadsDir, filename));
-    if (!existsLocally) {
-      obj.featuredImage = cleanImages[0];
-    }
-  }
 
   return obj;
 };

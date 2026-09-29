@@ -3,27 +3,75 @@ import dotenv from 'dotenv';
 
 dotenv.config();
 
-const cloudName = process.env.CLOUDINARY_CLOUD_NAME || process.env.CLOUDINARY_NAME;
-const apiKey = process.env.CLOUDINARY_API_KEY;
-const apiSecret = process.env.CLOUDINARY_API_SECRET;
-const cloudinaryUrl = process.env.CLOUDINARY_URL;
-
+/**
+ * Check if Cloudinary is configured with valid credentials.
+ * Returns false if credentials are missing, placeholders, or obviously wrong
+ * (e.g. a Razorpay key pasted into the Cloudinary API key field).
+ */
 export const isCloudinaryConfigured = () => {
-  if (cloudinaryUrl && cloudinaryUrl.trim() !== '' && !cloudinaryUrl.includes('placeholder')) return true;
-  if (!cloudName || !apiKey || !apiSecret) return false;
-  // If razorpay test key or placeholder is placed in CLOUDINARY_API_KEY, do not attempt Cloudinary
-  if (apiKey.startsWith('rzp_') || apiKey.includes('placeholder') || apiSecret.includes('placeholder')) {
+  const cloudinaryUrl = process.env.CLOUDINARY_URL;
+  const cloudName = process.env.CLOUDINARY_CLOUD_NAME || process.env.CLOUDINARY_NAME;
+  const apiKey = process.env.CLOUDINARY_API_KEY;
+  const apiSecret = process.env.CLOUDINARY_API_SECRET;
+
+  if (cloudinaryUrl && cloudinaryUrl.trim() !== '' && !cloudinaryUrl.includes('placeholder') && !cloudinaryUrl.includes('your_')) {
+    return true;
+  }
+  if (!cloudName || !apiKey || !apiSecret) {
     return false;
   }
+
+  const strKey = String(apiKey).trim();
+  const strSecret = String(apiSecret).trim();
+  const strName = String(cloudName).trim();
+
+  // Detect placeholder / example strings
+  if (
+    strKey.includes('placeholder') ||
+    strKey.includes('your_') ||
+    strSecret.includes('placeholder') ||
+    strSecret.includes('your_') ||
+    strName.includes('placeholder') ||
+    strName.includes('your_')
+  ) {
+    return false;
+  }
+
+  // Detect obviously wrong keys (e.g. Razorpay keys pasted by mistake)
+  // Cloudinary API keys are always purely numeric (e.g. 123456789012345)
+  if (strKey.startsWith('rzp_') || strKey.startsWith('sk_') || strKey.startsWith('pk_')) {
+    console.error(
+      '❌ CLOUDINARY_API_KEY appears to be a Razorpay/Stripe key, not a Cloudinary key!',
+      'Cloudinary API keys are numeric (e.g. 123456789012345).',
+      'Current value starts with:', strKey.substring(0, 8) + '...',
+      'Please set the correct Cloudinary API key in your .env file.'
+    );
+    return false;
+  }
+
+  // Cloudinary API keys should be numeric only
+  if (!/^\d{10,}$/.test(strKey)) {
+    console.warn(
+      '⚠️ CLOUDINARY_API_KEY does not look like a valid Cloudinary key (expected all-numeric, 15+ digits).',
+      'Current value starts with:', strKey.substring(0, 8) + '...',
+      'Cloudinary uploads may fail. Please verify your credentials.'
+    );
+    // Still return true — let Cloudinary SDK attempt it and fail with a clear error
+  }
+
   return true;
 };
 
+/**
+ * Ensures Cloudinary is configured with latest process.env values
+ */
 export const ensureCloudinaryConfig = () => {
   if (!isCloudinaryConfigured()) return false;
+
+  const cUrl = process.env.CLOUDINARY_URL;
   const cName = process.env.CLOUDINARY_CLOUD_NAME || process.env.CLOUDINARY_NAME;
   const aKey = process.env.CLOUDINARY_API_KEY;
   const aSecret = process.env.CLOUDINARY_API_SECRET;
-  const cUrl = process.env.CLOUDINARY_URL;
 
   if (cUrl && cUrl.trim() !== '') {
     cloudinary.config({
@@ -32,7 +80,7 @@ export const ensureCloudinaryConfig = () => {
     });
   } else if (cName && aKey && aSecret) {
     cloudinary.config({
-      cloud_name: cName.trim(),
+      cloud_name: String(cName).trim(),
       api_key: String(aKey).trim(),
       api_secret: String(aSecret).trim(),
       secure: true,
@@ -45,7 +93,7 @@ export const ensureCloudinaryConfig = () => {
 ensureCloudinaryConfig();
 
 /**
- * Upload buffer to Cloudinary
+ * Upload buffer to Cloudinary with collision-free unique public ID
  * @param {Buffer} buffer 
  * @param {Object} options 
  * @returns {Promise<Object>}
@@ -53,17 +101,24 @@ ensureCloudinaryConfig();
 export const uploadBufferToCloudinary = (buffer, options = {}) => {
   return new Promise((resolve, reject) => {
     if (!ensureCloudinaryConfig()) {
-      return reject(new Error('Cloudinary credentials are not configured.'));
+      return reject(new Error('Cloudinary credentials are not properly configured.'));
     }
+
+    const uniquePublicId = `craft-${Date.now()}-${Math.round(Math.random() * 1e9)}`;
 
     const uploadOptions = {
       folder: 'manmeet-creations/products',
+      public_id: uniquePublicId,
       resource_type: 'image',
+      unique_filename: true,
+      overwrite: false,
+      use_filename: false,
       ...options,
     };
 
     const stream = cloudinary.uploader.upload_stream(uploadOptions, (error, result) => {
       if (error) {
+        console.error('Cloudinary stream upload error:', error.message || error);
         return reject(error);
       }
       resolve(result);

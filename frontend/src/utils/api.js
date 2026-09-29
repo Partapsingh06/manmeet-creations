@@ -47,7 +47,7 @@ export const cleanCloudinaryUrl = (url) => {
   if (!url || typeof url !== 'string' || !url.includes('cloudinary.com')) {
     return url;
   }
-  let clean = url.trim();
+  let clean = url.trim().replace(/^["']+|["']+$/g, '');
 
   // Fix protocol prefixes
   if (clean.startsWith('//')) {
@@ -75,7 +75,7 @@ export const cleanCloudinaryUrl = (url) => {
  */
 export const getImageUrl = (imageSrc, fallback = DEFAULT_PLACEHOLDER_IMAGE) => {
   if (!imageSrc || typeof imageSrc !== 'string') return fallback;
-  let clean = imageSrc.trim();
+  let clean = imageSrc.trim().replace(/^["']+|["']+$/g, '');
 
   if (!clean || clean === 'null' || clean === 'undefined' || clean === '[object Object]') {
     return fallback;

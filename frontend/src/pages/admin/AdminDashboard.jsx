@@ -149,7 +149,10 @@ export const AdminDashboard = () => {
   const handleOpenProductModal = (prod = null) => {
     if (prod) {
       setEditingProduct(prod);
-      const prodImages = Array.isArray(prod.images) ? prod.images : prod.images ? [prod.images] : [];
+      const prodImages = Array.isArray(prod.images) ? [...prod.images] : prod.images ? [prod.images] : [];
+      if (prod.featuredImage && !prodImages.includes(prod.featuredImage)) {
+        prodImages.unshift(prod.featuredImage);
+      }
       setProductFormData({
         name: prod.name || '',
         category: prod.category || (categories[0]?.name || 'Handmade Embroidery'),
@@ -386,7 +389,7 @@ export const AdminDashboard = () => {
   // --- Quick Image Change Handler ---
   const handleOpenQuickImageModal = (item, type) => {
     const currentImg = type === 'product'
-      ? (Array.isArray(item.images) && item.images[0]) || item.featuredImage || ''
+      ? item.featuredImage || (Array.isArray(item.images) && item.images[0]) || item.image || ''
       : item.image || '';
     setQuickImageModal({
       open: true,

@@ -23,12 +23,16 @@ export const CATEGORY_IMAGE_MAP = {
 export const HERO_FEATURED_IMAGE = 'https://tse1.mm.bing.net/th/id/OIP.1pN9caN2nSmEolbhHiy0mAHaJ7?r=0&pid=Api&h=220&P=0';
 
 /**
- * Returns the exact assigned image for a category by name, falling back to any valid provided image or default placeholder.
+ * Returns the exact assigned image for a category, prioritizing any uploaded custom image first,
+ * then falling back to known category map, and finally the default placeholder.
  */
-export const getCategoryDefaultImage = (categoryName, fallbackImage = '') => {
+export const getCategoryDefaultImage = (categoryName, customImage = '') => {
+  if (customImage && typeof customImage === 'string' && customImage.trim() !== '') {
+    return customImage.trim();
+  }
   const normalized = String(categoryName || '').trim().toLowerCase();
   if (CATEGORY_IMAGE_MAP[normalized]) {
     return CATEGORY_IMAGE_MAP[normalized];
   }
-  return fallbackImage || HERO_FEATURED_IMAGE;
+  return HERO_FEATURED_IMAGE;
 };

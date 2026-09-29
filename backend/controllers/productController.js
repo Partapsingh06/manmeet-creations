@@ -63,19 +63,34 @@ const getCategoryFallbackImage = (categoryName) => {
 const formatProductForResponse = (prod) => {
   if (!prod) return null;
   const obj = prod.toObject ? prod.toObject() : { ...prod };
-  const rawImages = Array.isArray(obj.images) ? obj.images : obj.images ? [obj.images] : [];
-  let cleanImages = sanitizeImageList(rawImages);
-  const fallback = getCategoryFallbackImage(obj.category);
+  
+  // Extract all potential images from product document
+  let rawImages = [];
+  if (Array.isArray(obj.images)) {
+    rawImages = [...obj.images];
+  } else if (typeof obj.images === 'string' && obj.images.trim()) {
+    rawImages = [obj.images.trim()];
+  }
+  
+  if (obj.featuredImage && typeof obj.featuredImage === 'string' && obj.featuredImage.trim()) {
+    const feat = obj.featuredImage.trim();
+    if (!rawImages.includes(feat)) {
+      rawImages.unshift(feat);
+    }
+  }
 
-  // If product has no valid images stored, use safe fallback
+  let cleanImages = sanitizeImageList(rawImages);
+
+  // ONLY if product truly has no valid images stored, use category fallback
   if (cleanImages.length === 0) {
+    const fallback = getCategoryFallbackImage(obj.category);
     cleanImages = [fallback];
   }
 
+  const primaryImage = (obj.featuredImage && sanitizeImageUrl(obj.featuredImage, '')) || cleanImages[0];
+
   obj.images = cleanImages;
-  obj.featuredImage = obj.featuredImage
-    ? sanitizeImageUrl(obj.featuredImage, cleanImages[0])
-    : cleanImages[0];
+  obj.featuredImage = primaryImage;
 
   return obj;
 };
@@ -241,13 +256,14 @@ export const createProduct = async (req, res) => {
       tags,
     } = req.body;
 
-    let processedImages = sanitizeImageList(images);
+    const rawInputImages = images || req.body.image;
+    let processedImages = sanitizeImageList(rawInputImages);
 
-    if (featuredImage) {
-      const cleanFeatured = sanitizeImageUrl(featuredImage, '');
-      if (cleanFeatured) {
-        processedImages = [cleanFeatured, ...processedImages.filter((img) => img !== cleanFeatured)];
-      }
+    const rawFeatured = featuredImage || (Array.isArray(images) && images.length > 0 ? images[0] : req.body.image);
+    const cleanFeatured = sanitizeImageUrl(rawFeatured, '');
+
+    if (cleanFeatured && !processedImages.includes(cleanFeatured)) {
+      processedImages = [cleanFeatured, ...processedImages];
     }
 
     if (!name || !price || !category || processedImages.length === 0) {
@@ -279,7 +295,7 @@ export const createProduct = async (req, res) => {
       originalPrice: originalPrice ? Number(originalPrice) : Number(price),
       discountPercent,
       images: processedImages,
-      featuredImage: processedImages[0],
+      featuredImage: cleanFeatured || processedImages[0],
       materials: Array.isArray(materials)
         ? materials
         : materials
@@ -348,25 +364,24 @@ export const updateProduct = async (req, res) => {
     if (fields.description !== undefined) product.description = fields.description;
     if (fields.category !== undefined) product.category = fields.category.trim();
 
-    if (fields.images !== undefined) {
-      let nextImages = sanitizeImageList(fields.images);
-      if (fields.featuredImage) {
-        const cleanFeatured = sanitizeImageUrl(fields.featuredImage, '');
-        if (cleanFeatured) {
-          nextImages = [cleanFeatured, ...nextImages.filter((img) => img !== cleanFeatured)];
-        }
-      }
-      product.images = nextImages;
-      product.featuredImage = nextImages[0] || sanitizeImageUrl(fields.featuredImage || product.featuredImage || '');
-    } else if (fields.featuredImage !== undefined) {
-      const cleanFeatured = sanitizeImageUrl(fields.featuredImage, '');
+    if (fields.images !== undefined || fields.featuredImage !== undefined || fields.image !== undefined) {
+      let rawImages = fields.images !== undefined ? fields.images : (product.images || []);
+      let processed = sanitizeImageList(rawImages);
+      
+      const newFeatured = fields.featuredImage !== undefined ? fields.featuredImage : (fields.image !== undefined ? fields.image : product.featuredImage);
+      const cleanFeatured = sanitizeImageUrl(newFeatured, '');
+
       if (cleanFeatured) {
-        product.featuredImage = cleanFeatured;
-        if (Array.isArray(product.images) && product.images.length > 0) {
-          product.images = [cleanFeatured, ...product.images.filter((img) => img !== cleanFeatured)];
-        } else {
-          product.images = [cleanFeatured];
+        if (!processed.includes(cleanFeatured)) {
+          processed = [cleanFeatured, ...processed];
         }
+        product.featuredImage = cleanFeatured;
+      } else if (processed.length > 0) {
+        product.featuredImage = processed[0];
+      }
+
+      if (processed.length > 0) {
+        product.images = processed;
       }
     }
 

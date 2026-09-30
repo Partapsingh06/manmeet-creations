@@ -3,46 +3,52 @@ import dotenv from 'dotenv';
 
 dotenv.config();
 
+const cleanEnvVar = (val) => {
+  if (!val) return '';
+  return String(val).trim().replace(/^["']+|["']+$/g, '');
+};
+
 /**
  * Check if Cloudinary is configured with valid credentials.
  * Returns false if credentials are missing, placeholders, or obviously wrong
  * (e.g. a Razorpay key pasted into the Cloudinary API key field).
  */
 export const isCloudinaryConfigured = () => {
-  const cloudinaryUrl = process.env.CLOUDINARY_URL;
-  const cloudName = process.env.CLOUDINARY_CLOUD_NAME || process.env.CLOUDINARY_NAME;
-  const apiKey = process.env.CLOUDINARY_API_KEY;
-  const apiSecret = process.env.CLOUDINARY_API_SECRET;
+  const cloudinaryUrl = cleanEnvVar(process.env.CLOUDINARY_URL);
+  const cloudName = cleanEnvVar(process.env.CLOUDINARY_CLOUD_NAME || process.env.CLOUDINARY_NAME);
+  const apiKey = cleanEnvVar(process.env.CLOUDINARY_API_KEY);
+  const apiSecret = cleanEnvVar(process.env.CLOUDINARY_API_SECRET);
 
-  if (cloudinaryUrl && cloudinaryUrl.trim() !== '' && !cloudinaryUrl.includes('placeholder') && !cloudinaryUrl.includes('your_')) {
+  if (
+    cloudinaryUrl &&
+    !cloudinaryUrl.includes('placeholder') &&
+    !cloudinaryUrl.includes('your_') &&
+    !cloudinaryUrl.includes('<')
+  ) {
     return true;
   }
+
   if (!cloudName || !apiKey || !apiSecret) {
     return false;
   }
 
-  const strKey = String(apiKey).trim();
-  const strSecret = String(apiSecret).trim();
-  const strName = String(cloudName).trim();
-
   // Detect placeholder / example strings
-  if (
-    strKey.includes('placeholder') ||
-    strKey.includes('your_') ||
-    strSecret.includes('placeholder') ||
-    strSecret.includes('your_') ||
-    strName.includes('placeholder') ||
-    strName.includes('your_')
-  ) {
+  const isPlaceholder = (val) =>
+    val.includes('placeholder') ||
+    val.includes('your_') ||
+    val.includes('<') ||
+    val.includes('>');
+
+  if (isPlaceholder(apiKey) || isPlaceholder(apiSecret) || isPlaceholder(cloudName)) {
     return false;
   }
 
-  // Detect obviously wrong keys (e.g. Razorpay keys pasted by mistake)
-  if (strKey.startsWith('rzp_') || strKey.startsWith('sk_') || strKey.startsWith('pk_')) {
+  // Detect obviously wrong keys (e.g. Razorpay / Stripe keys pasted by mistake)
+  if (apiKey.startsWith('rzp_') || apiKey.startsWith('sk_') || apiKey.startsWith('pk_')) {
     console.error(
       '❌ CLOUDINARY_API_KEY appears to be a Razorpay/Stripe key, not a Cloudinary key!',
       'Cloudinary API keys are numeric (e.g. 123456789012345).',
-      'Please set your genuine Cloudinary API key in backend/.env'
+      'Please set your genuine Cloudinary API key in backend/.env or Render environment variables.'
     );
     return false;
   }
@@ -55,18 +61,22 @@ export const isCloudinaryConfigured = () => {
  */
 export const getCloudinaryStatus = () => {
   const isConfigured = isCloudinaryConfigured();
-  const cloudName = process.env.CLOUDINARY_CLOUD_NAME || process.env.CLOUDINARY_NAME || '';
-  const apiKey = process.env.CLOUDINARY_API_KEY || '';
-  const hasSecret = Boolean(process.env.CLOUDINARY_API_SECRET);
+  const cloudName = cleanEnvVar(process.env.CLOUDINARY_CLOUD_NAME || process.env.CLOUDINARY_NAME);
+  const apiKey = cleanEnvVar(process.env.CLOUDINARY_API_KEY);
+  const hasSecret = Boolean(cleanEnvVar(process.env.CLOUDINARY_API_SECRET));
 
   let reason = 'Ready for cloud uploads';
   if (!isConfigured) {
-    if (apiKey.startsWith('rzp_')) {
-      reason = 'CLOUDINARY_API_KEY contains a Razorpay key instead of numeric Cloudinary API Key';
+    if (apiKey.startsWith('rzp_') || apiKey.startsWith('sk_') || apiKey.startsWith('pk_')) {
+      reason = 'CLOUDINARY_API_KEY contains a payment gateway key instead of numeric Cloudinary API Key';
     } else if (!cloudName || !apiKey || !hasSecret) {
-      reason = 'Missing one or more Cloudinary environment variables (CLOUDINARY_CLOUD_NAME, CLOUDINARY_API_KEY, CLOUDINARY_API_SECRET)';
+      const missing = [];
+      if (!cloudName) missing.push('CLOUDINARY_CLOUD_NAME');
+      if (!apiKey) missing.push('CLOUDINARY_API_KEY');
+      if (!hasSecret) missing.push('CLOUDINARY_API_SECRET');
+      reason = `Missing Cloudinary environment variable(s): ${missing.join(', ')}`;
     } else {
-      reason = 'Cloudinary credentials appear invalid or contain placeholders';
+      reason = 'Cloudinary credentials appear invalid or contain placeholder template values';
     }
   }
 
@@ -83,21 +93,21 @@ export const getCloudinaryStatus = () => {
 export const ensureCloudinaryConfig = () => {
   if (!isCloudinaryConfigured()) return false;
 
-  const cUrl = process.env.CLOUDINARY_URL;
-  const cName = process.env.CLOUDINARY_CLOUD_NAME || process.env.CLOUDINARY_NAME;
-  const aKey = process.env.CLOUDINARY_API_KEY;
-  const aSecret = process.env.CLOUDINARY_API_SECRET;
+  const cUrl = cleanEnvVar(process.env.CLOUDINARY_URL);
+  const cName = cleanEnvVar(process.env.CLOUDINARY_CLOUD_NAME || process.env.CLOUDINARY_NAME);
+  const aKey = cleanEnvVar(process.env.CLOUDINARY_API_KEY);
+  const aSecret = cleanEnvVar(process.env.CLOUDINARY_API_SECRET);
 
-  if (cUrl && cUrl.trim() !== '') {
+  if (cUrl) {
     cloudinary.config({
-      cloudinary_url: cUrl.trim(),
+      cloudinary_url: cUrl,
       secure: true,
     });
   } else if (cName && aKey && aSecret) {
     cloudinary.config({
-      cloud_name: String(cName).trim(),
-      api_key: String(aKey).trim(),
-      api_secret: String(aSecret).trim(),
+      cloud_name: cName,
+      api_key: aKey,
+      api_secret: aSecret,
       secure: true,
     });
   }

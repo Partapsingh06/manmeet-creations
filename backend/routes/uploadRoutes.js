@@ -100,9 +100,11 @@ router.post('/', upload.single('image'), async (req, res) => {
 
     // 2. If Cloudinary is not configured on a production deployment, fail with informative guidance
     if (process.env.NODE_ENV === 'production') {
+      const status = getCloudinaryStatus();
       return res.status(500).json({
         success: false,
         message: 'Cloudinary storage is required for permanent media uploads in production. Please set CLOUDINARY_CLOUD_NAME, CLOUDINARY_API_KEY, and CLOUDINARY_API_SECRET in your server environment variables.',
+        details: status.reason,
       });
     }
 
@@ -147,9 +149,12 @@ router.post('/multiple', upload.array('images', 8), async (req, res) => {
     const cloudinaryEnabled = isCloudinaryConfigured();
 
     if (!cloudinaryEnabled && process.env.NODE_ENV === 'production') {
+      const status = getCloudinaryStatus();
       return res.status(500).json({
         success: false,
-        message: 'Cloudinary storage is required for permanent media uploads in production. Please configure Cloudinary credentials.',
+        message:
+          'Cloudinary storage is required for permanent media uploads in production. Please set CLOUDINARY_CLOUD_NAME, CLOUDINARY_API_KEY, and CLOUDINARY_API_SECRET in your server environment variables.',
+        details: status.reason,
       });
     }
 
@@ -166,7 +171,7 @@ router.post('/multiple', upload.array('images', 8), async (req, res) => {
           console.error('❌ Cloudinary multiple upload FAILED:', cloudError.message);
           return res.status(500).json({
             success: false,
-            message: `Cloud image upload failed: ${cloudError.message}. Please check your Cloudinary credentials.`,
+            message: `Cloud image upload failed: ${cloudError.message}. Please check Cloudinary API credentials.`,
           });
         }
       }

@@ -5,7 +5,7 @@ import morgan from 'morgan';
 import path from 'path';
 import fs from 'fs';
 import { connectDB } from './config/db.js';
-import { seedData } from './seeder.js';
+import { ensureEssentialDefaults } from './seeder.js';
 import Product from './models/Product.js';
 import User from './models/User.js';
 
@@ -132,21 +132,15 @@ app.use('/api/upload', uploadRoutes);
 app.use(notFound);
 app.use(errorHandler);
 
-// Connect DB & auto-seed if empty
+// Connect DB & ensure essentials
 const startServer = async () => {
   try {
     await connectDB();
 
-    // Check if admin user exists, or run initial seed
-    const adminExists = await User.findOne({ role: 'admin' });
+    // Ensure admin user and essential categories exist without overriding user-managed products
+    await ensureEssentialDefaults();
     const productCount = await Product.countDocuments();
-
-    if (!adminExists || productCount === 0) {
-      console.log('🌱 Initializing boutique seed data & default records...');
-      await seedData();
-    } else {
-      console.log(`✨ Database active with ${productCount} handcrafted products and configured admin account.`);
-    }
+    console.log(`✨ Database active with ${productCount} handcrafted products.`);
 
     app.listen(PORT, () => {
       console.log(`🚀 Manmeet Creations Backend Server running on http://localhost:${PORT}`);

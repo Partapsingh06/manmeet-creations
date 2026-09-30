@@ -14,6 +14,107 @@ import { connectDB } from './config/db.js';
 
 dotenv.config();
 
+export const ensureEssentialDefaults = async () => {
+  try {
+    // Check if admin user exists, create if missing
+    let adminUser = await User.findOne({ role: 'admin' });
+    if (!adminUser) {
+      adminUser = await User.create({
+        name: 'Manmeet Kaur (Admin)',
+        email: process.env.ADMIN_EMAIL || 'kmeet7270@gmail.com',
+        password: process.env.ADMIN_INITIAL_PASSWORD || 'Admin@1234',
+        phone: '+91 6239661708',
+        role: 'admin',
+        addresses: [
+          {
+            street: 'VPO Tughalwal, Near Harchowal',
+            city: 'Gurdaspur',
+            state: 'Punjab',
+            postalCode: '143527',
+            country: 'India',
+            isDefault: true,
+          },
+        ],
+      });
+      console.log('👤 Admin account initialized.');
+    }
+
+    const categoriesCount = await Category.countDocuments();
+    if (categoriesCount === 0) {
+      const defaultCategories = [
+        {
+          name: 'Handmade Embroidery',
+          slug: 'handmade-embroidery',
+          description: 'Delicate floral hoops, personalized wedding calendar hoops, and intricate thread work.',
+          image: 'https://images.unsplash.com/photo-1598300042247-d088f8ab3a91?auto=format&fit=crop&w=800&q=80',
+          iconName: 'Scissors',
+          isFeatured: true,
+        },
+        {
+          name: 'Resin Art',
+          slug: 'resin-art',
+          description: 'Glossy ocean wave wall clocks, geode platters, floral preserved preservation blocks & coasters.',
+          image: 'https://images.unsplash.com/photo-1579783900882-c0d3dad7b119?auto=format&fit=crop&w=800&q=80',
+          iconName: 'Sparkles',
+          isFeatured: true,
+        },
+        {
+          name: 'Fabric Painting',
+          slug: 'fabric-painting',
+          description: 'Custom hand-painted organza dupattas, canvas tote bags, denim jackets, and cushion covers.',
+          image: 'https://images.unsplash.com/photo-1579783902614-a3fb3927b675?auto=format&fit=crop&w=800&q=80',
+          iconName: 'Palette',
+          isFeatured: true,
+        },
+        {
+          name: 'Portraits',
+          slug: 'portraits',
+          description: 'Hand-drawn charcoal sketches, vibrant watercolor couple portraits, and realistic digital oil art.',
+          image: 'https://images.unsplash.com/photo-1544717305-2782549b5136?auto=format&fit=crop&w=800&q=80',
+          iconName: 'Image',
+          isFeatured: true,
+        },
+        {
+          name: 'Handmade Gift',
+          slug: 'handmade-gift',
+          description: 'Heartfelt explosion boxes, customized photo scrapbooks, love hampers, and wooden photo plaques.',
+          image: 'https://images.unsplash.com/photo-1513519245088-0e12902e5a38?auto=format&fit=crop&w=800&q=80',
+          iconName: 'Gift',
+          isFeatured: true,
+        },
+        {
+          name: 'Customized Gift',
+          slug: 'customized-gift',
+          description: 'Personalized name lamps, customized calendar frames, couple nameplates, and memory frames.',
+          image: 'https://images.unsplash.com/photo-1549465220-1a8b9238cd48?auto=format&fit=crop&w=800&q=80',
+          iconName: 'HeartHandshake',
+          isFeatured: true,
+        },
+        {
+          name: 'Handmade Jewellery',
+          slug: 'handmade-jewellery',
+          description: 'Lightweight polymer clay earrings, real pressed floral resin pendants, and beaded statement pieces.',
+          image: 'https://images.unsplash.com/photo-1535632066927-ab7c9ab60908?auto=format&fit=crop&w=800&q=80',
+          iconName: 'Gem',
+          isFeatured: true,
+        },
+        {
+          name: 'Decorative Crafts',
+          slug: 'decorative-crafts',
+          description: 'Boho macrame wall hangings, lippan art mirror wall plates, and handcrafted festive decor.',
+          image: 'https://images.unsplash.com/photo-1582562124811-c09040d0a901?auto=format&fit=crop&w=800&q=80',
+          iconName: 'Layers',
+          isFeatured: true,
+        },
+      ];
+      await Category.insertMany(defaultCategories);
+      console.log('📁 Initial categories initialized.');
+    }
+  } catch (err) {
+    console.warn('⚠️ Could not verify essential defaults:', err.message);
+  }
+};
+
 export const seedData = async () => {
   try {
     // Check if admin user exists, create if missing

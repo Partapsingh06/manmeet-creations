@@ -1,11 +1,12 @@
 export const DEFAULT_PLACEHOLDER_IMAGE = 'https://images.unsplash.com/photo-1598300042247-d088f8ab3a91?auto=format&fit=crop&w=800&q=80';
+export const DEFAULT_PROD_API_URL = 'https://manmeet-creations.onrender.com';
 
 export const getBaseApiUrl = () => {
-  const envUrl = import.meta.env.VITE_API_URL;
+  const envUrl = import.meta.env?.VITE_API_URL;
   if (envUrl && typeof envUrl === 'string' && envUrl.trim() !== '') {
     return envUrl.trim().replace(/\/+$/, '');
   }
-  if (import.meta.env.PROD) {
+  if (import.meta.env?.PROD) {
     return DEFAULT_PROD_API_URL;
   }
   return '';

@@ -12,6 +12,7 @@ import {
 } from 'lucide-react';
 import { useCart } from '../context/CartContext';
 import { useToast } from '../context/ToastContext';
+import { getImageUrl, DEFAULT_PLACEHOLDER_IMAGE } from '../utils/api';
 
 export const CartPage = () => {
   const {
@@ -163,8 +164,12 @@ export const CartPage = () => {
                   }}
                 >
                   <img
-                    src={item.image}
+                    src={getImageUrl(item.image)}
                     alt={item.name}
+                    onError={(e) => {
+                      e.currentTarget.onerror = null;
+                      e.currentTarget.src = DEFAULT_PLACEHOLDER_IMAGE;
+                    }}
                     style={{ width: '90px', height: '90px', objectFit: 'cover', borderRadius: 'var(--radius-md)', backgroundColor: 'var(--bg-subtle)', flexShrink: 0 }}
                   />
 

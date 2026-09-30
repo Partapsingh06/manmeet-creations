@@ -1,5 +1,6 @@
 import React, { useEffect } from 'react';
 import { X, ChevronLeft, ChevronRight, Download, Sparkles } from 'lucide-react';
+import { getImageUrl, DEFAULT_PLACEHOLDER_IMAGE } from '../utils/api';
 
 export const LightboxModal = ({ images = [], currentIndex = 0, onClose, onPrev, onNext }) => {
   useEffect(() => {
@@ -15,7 +16,8 @@ export const LightboxModal = ({ images = [], currentIndex = 0, onClose, onPrev, 
   const currentItem = images[currentIndex];
   if (!currentItem) return null;
 
-  const imageUrl = typeof currentItem === 'string' ? currentItem : (currentItem.url || currentItem.image);
+  const rawUrl = typeof currentItem === 'string' ? currentItem : (currentItem.url || currentItem.image);
+  const imageUrl = getImageUrl(rawUrl);
   const title = typeof currentItem === 'object' ? currentItem.title : 'Handcrafted Artwork';
   const category = typeof currentItem === 'object' ? currentItem.category : '';
 
@@ -121,6 +123,10 @@ export const LightboxModal = ({ images = [], currentIndex = 0, onClose, onPrev, 
         <img
           src={imageUrl}
           alt={title}
+          onError={(e) => {
+            e.currentTarget.onerror = null;
+            e.currentTarget.src = DEFAULT_PLACEHOLDER_IMAGE;
+          }}
           style={{
             maxWidth: '100%',
             maxHeight: '80vh',

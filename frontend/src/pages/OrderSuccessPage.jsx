@@ -12,7 +12,7 @@ import {
   ArrowRight,
   ShieldCheck
 } from 'lucide-react';
-import { apiRequest } from '../utils/api';
+import { apiRequest, getImageUrl, DEFAULT_PLACEHOLDER_IMAGE } from '../utils/api';
 
 export const OrderSuccessPage = () => {
   const { id } = useParams();
@@ -169,7 +169,15 @@ export const OrderSuccessPage = () => {
               {order.orderItems?.map((item, idx) => (
                 <div key={idx} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid var(--border-light)', paddingBottom: '1rem' }}>
                   <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
-                    <img src={item.image} alt={item.name} style={{ width: '60px', height: '60px', borderRadius: 'var(--radius-sm)', objectFit: 'cover' }} />
+                    <img
+                      src={getImageUrl(item.image)}
+                      alt={item.name}
+                      onError={(e) => {
+                        e.currentTarget.onerror = null;
+                        e.currentTarget.src = DEFAULT_PLACEHOLDER_IMAGE;
+                      }}
+                      style={{ width: '60px', height: '60px', borderRadius: 'var(--radius-sm)', objectFit: 'cover' }}
+                    />
                     <div>
                       <h4 style={{ fontSize: '0.95rem', fontWeight: 600 }}>{item.name}</h4>
                       <div style={{ fontSize: '0.82rem', color: 'var(--text-muted)' }}>Quantity: {item.quantity}</div>

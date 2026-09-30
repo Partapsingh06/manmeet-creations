@@ -38,28 +38,43 @@ export const isCloudinaryConfigured = () => {
   }
 
   // Detect obviously wrong keys (e.g. Razorpay keys pasted by mistake)
-  // Cloudinary API keys are always purely numeric (e.g. 123456789012345)
   if (strKey.startsWith('rzp_') || strKey.startsWith('sk_') || strKey.startsWith('pk_')) {
     console.error(
       '❌ CLOUDINARY_API_KEY appears to be a Razorpay/Stripe key, not a Cloudinary key!',
       'Cloudinary API keys are numeric (e.g. 123456789012345).',
-      'Current value starts with:', strKey.substring(0, 8) + '...',
-      'Please set the correct Cloudinary API key in your .env file.'
+      'Please set your genuine Cloudinary API key in backend/.env'
     );
     return false;
   }
 
-  // Cloudinary API keys should be numeric only
-  if (!/^\d{10,}$/.test(strKey)) {
-    console.warn(
-      '⚠️ CLOUDINARY_API_KEY does not look like a valid Cloudinary key (expected all-numeric, 15+ digits).',
-      'Current value starts with:', strKey.substring(0, 8) + '...',
-      'Cloudinary uploads may fail. Please verify your credentials.'
-    );
-    // Still return true — let Cloudinary SDK attempt it and fail with a clear error
+  return true;
+};
+
+/**
+ * Get Cloudinary diagnostic status for troubleshooting
+ */
+export const getCloudinaryStatus = () => {
+  const isConfigured = isCloudinaryConfigured();
+  const cloudName = process.env.CLOUDINARY_CLOUD_NAME || process.env.CLOUDINARY_NAME || '';
+  const apiKey = process.env.CLOUDINARY_API_KEY || '';
+  const hasSecret = Boolean(process.env.CLOUDINARY_API_SECRET);
+
+  let reason = 'Ready for cloud uploads';
+  if (!isConfigured) {
+    if (apiKey.startsWith('rzp_')) {
+      reason = 'CLOUDINARY_API_KEY contains a Razorpay key instead of numeric Cloudinary API Key';
+    } else if (!cloudName || !apiKey || !hasSecret) {
+      reason = 'Missing one or more Cloudinary environment variables (CLOUDINARY_CLOUD_NAME, CLOUDINARY_API_KEY, CLOUDINARY_API_SECRET)';
+    } else {
+      reason = 'Cloudinary credentials appear invalid or contain placeholders';
+    }
   }
 
-  return true;
+  return {
+    configured: isConfigured,
+    cloudName: isConfigured ? cloudName : undefined,
+    reason,
+  };
 };
 
 /**
@@ -184,13 +199,18 @@ export const extractCloudinaryPublicId = (url) => {
 };
 
 /**
- * Delete image from Cloudinary
+ * Delete image from Cloudinary safely
  * @param {string} publicIdOrUrl 
  * @returns {Promise<Object>}
  */
 export const deleteFromCloudinary = async (publicIdOrUrl) => {
   if (!ensureCloudinaryConfig() || !publicIdOrUrl) {
     return { success: false, message: 'Cloudinary not configured or invalid id' };
+  }
+
+  // Never attempt to delete external placeholder images (e.g. Unsplash)
+  if (typeof publicIdOrUrl === 'string' && (publicIdOrUrl.includes('unsplash.com') || !publicIdOrUrl.includes('cloudinary.com'))) {
+    return { success: true, message: 'Skipped non-Cloudinary image' };
   }
 
   let publicId = publicIdOrUrl;
@@ -205,7 +225,7 @@ export const deleteFromCloudinary = async (publicIdOrUrl) => {
     const result = await cloudinary.uploader.destroy(publicId);
     return { success: true, result };
   } catch (error) {
-    console.error('Cloudinary delete error:', error.message);
+    console.warn('Cloudinary delete warning:', error.message);
     return { success: false, error: error.message };
   }
 };

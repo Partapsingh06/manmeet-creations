@@ -266,10 +266,17 @@ export const createProduct = async (req, res) => {
       processedImages = [cleanFeatured, ...processedImages];
     }
 
-    if (!name || !price || !category || processedImages.length === 0) {
+    if (!name || !price || !category) {
       return res.status(400).json({
         success: false,
-        message: 'Please provide product name, selling price, category, and at least one valid image.',
+        message: 'Please provide product name, selling price, and category.',
+      });
+    }
+
+    if (processedImages.length === 0) {
+      return res.status(400).json({
+        success: false,
+        message: 'Please upload at least one valid permanent image for the product. Temporary preview URLs cannot be saved.',
       });
     }
 
@@ -364,24 +371,21 @@ export const updateProduct = async (req, res) => {
     if (fields.description !== undefined) product.description = fields.description;
     if (fields.category !== undefined) product.category = fields.category.trim();
 
+    // Only update images if images or featuredImage were explicitly provided in the payload
     if (fields.images !== undefined || fields.featuredImage !== undefined || fields.image !== undefined) {
-      let rawImages = fields.images !== undefined ? fields.images : (product.images || []);
+      let rawImages = fields.images !== undefined ? fields.images : product.images;
       let processed = sanitizeImageList(rawImages);
       
       const newFeatured = fields.featuredImage !== undefined ? fields.featuredImage : (fields.image !== undefined ? fields.image : product.featuredImage);
       const cleanFeatured = sanitizeImageUrl(newFeatured, '');
 
-      if (cleanFeatured) {
-        if (!processed.includes(cleanFeatured)) {
-          processed = [cleanFeatured, ...processed];
-        }
-        product.featuredImage = cleanFeatured;
-      } else if (processed.length > 0) {
-        product.featuredImage = processed[0];
+      if (cleanFeatured && !processed.includes(cleanFeatured)) {
+        processed = [cleanFeatured, ...processed];
       }
 
       if (processed.length > 0) {
         product.images = processed;
+        product.featuredImage = cleanFeatured || processed[0];
       }
     }
 
@@ -431,7 +435,10 @@ export const deleteProduct = async (req, res) => {
       return res.status(404).json({ success: false, message: 'Product not found' });
     }
 
-    // Clean up images in Cloudinary or local disk
+    const deletedId = product._id;
+    const productName = product.name;
+
+    // Clean up images only if not used by another product
     const allImages = [
       ...(Array.isArray(product.images) ? product.images : []),
       product.featuredImage,
@@ -439,26 +446,32 @@ export const deleteProduct = async (req, res) => {
 
     for (const imgUrl of allImages) {
       if (imgUrl && typeof imgUrl === 'string') {
-        if (imgUrl.includes('cloudinary.com')) {
-          await deleteFromCloudinary(imgUrl).catch((err) => {
-            console.warn('Cloudinary delete warning on product removal:', err.message);
-          });
-        } else if (imgUrl.startsWith('/uploads/') || imgUrl.startsWith('uploads/')) {
-          removeLocalImageFile(imgUrl);
+        // Check if any OTHER product uses this image
+        const otherProductUsingImg = await Product.findOne({
+          _id: { $ne: deletedId },
+          $or: [{ images: imgUrl }, { featuredImage: imgUrl }],
+        });
+
+        if (!otherProductUsingImg) {
+          if (imgUrl.includes('cloudinary.com') && imgUrl.includes('manmeet-creations')) {
+            await deleteFromCloudinary(imgUrl).catch((err) => {
+              console.warn('Cloudinary delete warning on product removal:', err.message);
+            });
+          } else if (imgUrl.startsWith('/uploads/') || imgUrl.startsWith('uploads/')) {
+            removeLocalImageFile(imgUrl);
+          }
         }
       }
     }
 
     // Permanently delete product document and its reviews from MongoDB
-    const deletedId = product._id;
-    const productName = product.name;
     await Product.deleteOne({ _id: deletedId });
     await Review.deleteMany({ product: deletedId });
 
     res.json({
       success: true,
       deletedId,
-      message: `Product "${productName}" permanently deleted from database`,
+      message: `Product "${productName}" removed successfully`,
     });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });

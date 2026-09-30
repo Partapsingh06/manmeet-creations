@@ -17,7 +17,7 @@ import { useAuth } from '../context/AuthContext';
 import { useCart } from '../context/CartContext';
 import { useWishlist } from '../context/WishlistContext';
 import { useToast } from '../context/ToastContext';
-import { apiRequest } from '../utils/api';
+import { apiRequest, getImageUrl, DEFAULT_PLACEHOLDER_IMAGE } from '../utils/api';
 import { ProductCard } from '../components/ProductCard';
 
 export const ProfilePage = () => {
@@ -275,7 +275,15 @@ export const ProfilePage = () => {
                           {order.orderItems?.map((item, i) => (
                             <div key={i} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                               <div style={{ display: 'flex', gap: '0.8rem', alignItems: 'center' }}>
-                                <img src={item.image} alt={item.name} style={{ width: '48px', height: '48px', borderRadius: '6px', objectFit: 'cover' }} />
+                                <img
+                                  src={getImageUrl(item.image)}
+                                  alt={item.name}
+                                  onError={(e) => {
+                                    e.currentTarget.onerror = null;
+                                    e.currentTarget.src = DEFAULT_PLACEHOLDER_IMAGE;
+                                  }}
+                                  style={{ width: '48px', height: '48px', borderRadius: '6px', objectFit: 'cover' }}
+                                />
                                 <div>
                                   <div style={{ fontWeight: 600, fontSize: '0.9rem' }}>{item.name}</div>
                                   <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>Qty: {item.quantity} • ₹{item.price} each</div>

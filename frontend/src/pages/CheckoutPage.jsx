@@ -15,7 +15,7 @@ import confetti from 'canvas-confetti';
 import { useCart } from '../context/CartContext';
 import { useAuth } from '../context/AuthContext';
 import { useToast } from '../context/ToastContext';
-import { apiRequest } from '../utils/api';
+import { apiRequest, getImageUrl, DEFAULT_PLACEHOLDER_IMAGE } from '../utils/api';
 
 export const CheckoutPage = () => {
   const { cartItems, subtotal, shippingPrice, totalAmount, clearCart } = useCart();
@@ -346,8 +346,12 @@ export const CheckoutPage = () => {
                 {cartItems.map((item) => (
                   <div key={item.product} style={{ display: 'flex', gap: '0.8rem', alignItems: 'center' }}>
                     <img
-                      src={item.image}
+                      src={getImageUrl(item.image)}
                       alt={item.name}
+                      onError={(e) => {
+                        e.currentTarget.onerror = null;
+                        e.currentTarget.src = DEFAULT_PLACEHOLDER_IMAGE;
+                      }}
                       style={{ width: '54px', height: '54px', objectFit: 'cover', borderRadius: 'var(--radius-sm)' }}
                     />
                     <div style={{ flex: 1, fontSize: '0.88rem' }}>

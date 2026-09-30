@@ -3,7 +3,7 @@
  * Ensures only valid permanent image URLs are stored and transmitted.
  */
 
-const DEFAULT_PLACEHOLDER = 'https://images.unsplash.com/photo-1598300042247-d088f8ab3a91?auto=format&fit=crop&w=800&q=80';
+export const DEFAULT_PLACEHOLDER = 'https://images.unsplash.com/photo-1598300042247-d088f8ab3a91?auto=format&fit=crop&w=800&q=80';
 
 /**
  * Normalizes and cleans Cloudinary URLs:
@@ -45,6 +45,11 @@ export const sanitizeImageUrl = (url, fallback = '') => {
     return fallback;
   }
 
+  // Disallow temporary browser-only blob: URLs and bloated base64 data URIs from database storage
+  if (clean.startsWith('blob:') || clean.startsWith('data:image/')) {
+    return fallback;
+  }
+
   // Reject Instagram post links (HTML pages, not direct image files)
   if (clean.includes('instagram.com/p/') || clean.includes('instagram.com/reel/') || clean.includes('instagram.com/tv/')) {
     return fallback;
@@ -72,18 +77,9 @@ export const sanitizeImageUrl = (url, fallback = '') => {
     clean = clean.replace(/^i?https?:?\/?\/?/i, 'https://');
   }
 
-  // Direct valid permanent URLs (HTTP, HTTPS, Base64 Data URI)
-  if (
-    clean.startsWith('http://') ||
-    clean.startsWith('https://') ||
-    clean.startsWith('data:image/')
-  ) {
+  // Direct valid permanent URLs (HTTP, HTTPS)
+  if (clean.startsWith('http://') || clean.startsWith('https://')) {
     return clean;
-  }
-
-  // Disallow temporary browser-only blob: URLs from being stored in database
-  if (clean.startsWith('blob:')) {
-    return fallback;
   }
 
   // If local /uploads path

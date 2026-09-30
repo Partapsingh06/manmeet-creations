@@ -2,7 +2,7 @@ import React from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { X, Trash2, ShoppingBag, ArrowRight, Sparkles, ShieldCheck } from 'lucide-react';
 import { useCart } from '../context/CartContext';
-import { DEFAULT_PLACEHOLDER_IMAGE } from '../utils/api';
+import { getImageUrl, DEFAULT_PLACEHOLDER_IMAGE } from '../utils/api';
 
 export const CartDrawer = () => {
   const {
@@ -127,7 +127,7 @@ export const CartDrawer = () => {
                   }}
                 >
                   <img
-                    src={item.image}
+                    src={getImageUrl(item.image)}
                     alt={item.name}
                     onError={(e) => {
                       e.currentTarget.onerror = null;

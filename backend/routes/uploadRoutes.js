@@ -5,6 +5,7 @@ import fs from 'fs';
 import { fileURLToPath } from 'url';
 import {
   isCloudinaryConfigured,
+  getCloudinaryStatus,
   uploadBufferToCloudinary,
   deleteFromCloudinary,
 } from '../config/cloudinary.js';
@@ -16,7 +17,7 @@ const router = express.Router();
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-// Ensure local uploads directories exist (both in backend and project root if applicable)
+// Local uploads directories for development fallback
 const uploadDir = path.resolve(__dirname, '../uploads');
 const rootUploadDir = path.resolve(__dirname, '../../uploads');
 
@@ -51,6 +52,20 @@ const upload = multer({
 });
 
 /**
+ * Check storage status & Cloudinary readiness
+ * @route GET /api/upload/status
+ * @access Public
+ */
+router.get('/status', (req, res) => {
+  const status = getCloudinaryStatus();
+  res.json({
+    success: true,
+    storage: status.configured ? 'cloudinary' : 'local',
+    ...status,
+  });
+});
+
+/**
  * Upload single image
  * @route POST /api/upload
  * @access Public / Authenticated
@@ -61,7 +76,7 @@ router.post('/', upload.single('image'), async (req, res) => {
       return res.status(400).json({ success: false, message: 'No image file provided' });
     }
 
-    // 1. If Cloudinary is configured, upload buffer directly — NO silent local fallback
+    // 1. Cloudinary upload (Primary & Permanent Storage)
     if (isCloudinaryConfigured()) {
       try {
         const cloudResult = await uploadBufferToCloudinary(req.file.buffer, {
@@ -75,18 +90,24 @@ router.post('/', upload.single('image'), async (req, res) => {
           message: 'Image uploaded to cloud storage successfully! ✨',
         });
       } catch (cloudError) {
-        // Cloudinary was configured but upload failed — do NOT silently fall back to local storage.
-        // Local files are ephemeral and will be lost on server restart / redeployment.
         console.error('❌ Cloudinary upload FAILED:', cloudError.message);
         return res.status(500).json({
           success: false,
-          message: `Cloud image upload failed: ${cloudError.message}. Please check your Cloudinary API credentials in the server .env file (CLOUDINARY_CLOUD_NAME, CLOUDINARY_API_KEY, CLOUDINARY_API_SECRET).`,
+          message: `Cloud image upload failed: ${cloudError.message}. Please check Cloudinary API credentials in backend/.env.`,
         });
       }
     }
 
-    // 2. Local disk storage — only used when Cloudinary is NOT configured (local dev without cloud creds)
-    console.warn('⚠️ Cloudinary not configured — saving image to local disk (will NOT persist on hosted deployments).');
+    // 2. If Cloudinary is not configured on a production deployment, fail with informative guidance
+    if (process.env.NODE_ENV === 'production') {
+      return res.status(500).json({
+        success: false,
+        message: 'Cloudinary storage is required for permanent media uploads in production. Please set CLOUDINARY_CLOUD_NAME, CLOUDINARY_API_KEY, and CLOUDINARY_API_SECRET in your server environment variables.',
+      });
+    }
+
+    // 3. Local disk storage fallback (ONLY for local development)
+    console.warn('⚠️ Cloudinary not configured — saving image to local disk for local development.');
     const ext = path.extname(req.file.originalname) || '.jpg';
     const uniqueName = `craft-${Date.now()}-${Math.round(Math.random() * 1e9)}${ext}`;
     const filePath = path.join(uploadDir, uniqueName);
@@ -103,7 +124,7 @@ router.post('/', upload.single('image'), async (req, res) => {
     res.json({
       success: true,
       imageUrl: fileUrl,
-      message: 'Image saved to local storage (⚠️ not permanent on hosted deployments — configure Cloudinary for persistence).',
+      message: 'Image saved to local storage (Development mode).',
     });
   } catch (error) {
     console.error('Image upload failed:', error);
@@ -125,6 +146,13 @@ router.post('/multiple', upload.array('images', 8), async (req, res) => {
     const uploadedUrls = [];
     const cloudinaryEnabled = isCloudinaryConfigured();
 
+    if (!cloudinaryEnabled && process.env.NODE_ENV === 'production') {
+      return res.status(500).json({
+        success: false,
+        message: 'Cloudinary storage is required for permanent media uploads in production. Please configure Cloudinary credentials.',
+      });
+    }
+
     for (const file of req.files) {
       if (cloudinaryEnabled) {
         try {
@@ -135,16 +163,15 @@ router.post('/multiple', upload.array('images', 8), async (req, res) => {
           uploadedUrls.push(secureUrl);
           continue;
         } catch (cloudError) {
-          // Cloudinary configured but upload failed — stop and report error
           console.error('❌ Cloudinary multiple upload FAILED:', cloudError.message);
           return res.status(500).json({
             success: false,
-            message: `Cloud image upload failed: ${cloudError.message}. Please check your Cloudinary API credentials.`,
+            message: `Cloud image upload failed: ${cloudError.message}. Please check your Cloudinary credentials.`,
           });
         }
       }
 
-      // Local fallback — only when Cloudinary is NOT configured
+      // Local fallback for local development
       const ext = path.extname(file.originalname) || '.jpg';
       const uniqueName = `craft-${Date.now()}-${Math.round(Math.random() * 1e9)}${ext}`;
       const filePath = path.join(uploadDir, uniqueName);
